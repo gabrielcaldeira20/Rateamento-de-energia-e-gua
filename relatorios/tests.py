@@ -68,5 +68,8 @@ class RelatorioTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.context["resumo"].disponibilidade, Decimal("10.00"))
         self.assertContains(resp, "dados-grafico")
-        self.assertContains(resp, "Disponível no plano Avançado")
+        # O botão bloqueado deu lugar aos botões de exportação, com regime e período da tela.
+        self.assertNotContains(resp, "Disponível no plano Avançado")
+        self.assertContains(resp, "formato=pdf&amp;regime=competencia&amp;inicio=2026-06&amp;fim=2026-06")
+        self.assertContains(resp, "formato=csv&amp;regime=competencia&amp;inicio=2026-06&amp;fim=2026-06")
         self.assertContains(resp, "chart.umd.min.js")

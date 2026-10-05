@@ -1,7 +1,7 @@
 # Status da construção
 
 Só fica marcado como pronto o que tem teste automatizado passando.
-Para rodar os testes: `DEBUG=True python manage.py test` (95 testes, todos passando).
+Para rodar os testes: `DEBUG=True python manage.py test` (101 testes, todos passando).
 
 | Fase | Item | Status | Testes |
 |---|---|---|---|
@@ -17,6 +17,9 @@ Para rodar os testes: `DEBUG=True python manage.py test` (95 testes, todos passa
 | 9 | Histórico de ligações: modelo, migração com carga, situacao_em, formulário | [x] pronto | associados/tests_historico.py |
 | 9 | Histórico de ligações: telas e item de menu | [x] pronto | associados/tests_historico.py (TelasHistoricoTests) |
 | 9 | Histórico de ligações no rateio e na geração mensal | [x] pronto | associados/tests_historico.py (UsoNoRateioENaGeracaoTests) |
+| 9 | Migração do histórico: aplica e reverte com e sem dados | [x] pronto | associados/tests_historico.py (MigracaoTests) |
+| 10 | Exportação do relatório em CSV | [x] pronto | relatorios/tests_exportacao.py |
+| 10 | Exportação do relatório em PDF | [x] pronto | relatorios/tests_exportacao.py |
 
 ## Testes obrigatórios
 
@@ -58,3 +61,22 @@ Para rodar os testes: `DEBUG=True python manage.py test` (95 testes, todos passa
 14. A geração mensal escolhe o mês num campo, com o mês atual como padrão.
 15. Os passos do lançamento de energia guardam os dados na sessão até a confirmação.
 16. A exportação de dados inclui também as leituras, que fazem parte dos fechamentos.
+
+### Histórico de ligações e exportação do relatório
+
+17. O histórico fica no app de associados. A lista geral tem rota própria, `/historico-ligacoes/`.
+18. Datas no futuro são recusadas, no formulário do associado e no histórico.
+19. Na edição do associado, só os serviços que mudaram geram registro, com a data informada.
+    Se já houver registro mais recente, ele continua valendo e o estado atual não muda.
+20. Editar um registro para uma data que já tem registro do mesmo serviço é recusado, com aviso.
+    Criar um registro nessa data atualiza o existente, como pede a regra de não duplicar.
+21. Ligar uma rede pelo histórico pede a leitura inicial quando o associado ainda não tem uma.
+22. O padrão ligado não tem histórico. No rateio de uma competência, ele só é exigido de quem continua com a rede hoje.
+    Quem desligou a rede depois da competência entra pelo histórico. Associados inativos continuam fora do rateio.
+23. No admin, rede da Sede, rede do Poço e água ficam somente leitura, porque são reflexo do histórico.
+24. Os associados importados por `importar_planilhas` recebem a data do dia da importação no histórico.
+25. Exportação sem início ou fim válidos usa os últimos 6 meses, o mesmo padrão da tela.
+    Formato diferente de pdf ou csv responde com erro 400.
+26. O CSV traz cabeçalho (associação, regime, período, data de geração), resumo e as duas tabelas, com uma linha de total em cada.
+    As tabelas da exportação vêm em ordem de data crescente. Na tela, a ordem é decrescente.
+27. O PDF não tem gráfico, que era opcional. Ele sai sem compressão de página, o que deixa o arquivo um pouco maior.

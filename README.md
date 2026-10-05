@@ -70,6 +70,28 @@ depois de confirmar que o site funciona só por HTTPS.
   Se uma linha tiver erro, nada é gravado. Nomes já cadastrados são ignorados.
 - **Exportar os dados da associação:** `python manage.py exportar_dados --destino pasta`.
   Gera CSVs de associados, cobranças, pagamentos, despesas, fechamentos e leituras.
+  Os associados importados recebem no histórico de ligações a data do dia da importação.
+  Para incluir alguém em rateios de meses anteriores, ajuste a data na linha do tempo do associado.
+
+## Histórico de ligações
+
+Cada mudança de rede (Sede, Poço) ou de água é um registro com data, no menu **Histórico de ligações**
+ou na página do associado. Aceita registros retroativos e duas mudanças do mesmo serviço no mesmo dia
+viram um único registro.
+
+- O estado atual do associado é sempre o registro mais recente por data de cada serviço.
+- O lançamento de energia de um mês só lista quem estava com a rede ligada no último dia daquele mês.
+- A geração mensal só cria água para quem a tinha ligada no último dia do mês.
+- Fechamentos e cobranças já criados nunca são recalculados.
+
+Na atualização para esta versão, a migração `associados 0003` cria um registro para cada serviço já
+ligado, com a data mais antiga entre o cadastro do associado e suas leituras e cobranças.
+
+## Exportação do relatório financeiro
+
+Na tela do relatório, os botões **Exportar PDF** e **Exportar CSV** usam o regime e o período selecionados.
+Os números vêm das mesmas funções da tela. O CSV usa UTF-8 com BOM, ponto e vírgula e valores no formato
+1.234,56, e abre direto no Excel em português. O PDF é gerado com reportlab, sem pacotes do sistema.
 
 ## Backup
 
@@ -86,11 +108,11 @@ pg_dump "$DATABASE_URL" --format=custom --file=asv-$(date +%Y-%m).dump
 |---|---|
 | `config` | Configurações, rotas gerais, WSGI |
 | `core` | Configuração da associação, painel inicial, login, utilitários, comandos |
-| `associados` | Cadastro, inativação e reativação, leituras iniciais |
+| `associados` | Cadastro, inativação e reativação, leituras iniciais, histórico de ligações |
 | `energia` | Fechamento mensal em 3 passos: rateio, disponibilidade, multa e validações |
 | `cobrancas` | Geração mensal, pagamentos, crédito, baixa em lote, link do WhatsApp |
 | `despesas` | Cadastro e filtros de despesas |
-| `relatorios` | Relatório financeiro |
+| `relatorios` | Relatório financeiro e exportação em PDF e CSV |
 
 As regras de cálculo ficam em `services.py` de cada app, não nas views.
 Operações que gravam vários registros usam `transaction.atomic`.

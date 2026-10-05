@@ -1,4 +1,5 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
 from django.views import View
 
@@ -34,3 +35,30 @@ class FinanceiroView(LoginRequiredMixin, View):
             "disponibilidades": services.disponibilidade_do_periodo(inicio, fim).order_by("-competencia", "associado__nome"),
         }
         return render(request, "relatorios/financeiro.html", contexto)
+
+
+class ExportarView(LoginRequiredMixin, View):
+    """Exporta o relatório com o regime e o período selecionados na tela.
+
+    /relatorios/financeiro/exportar/?formato=pdf|csv&regime=pagamento|competencia&inicio=AAAA-MM&fim=AAAA-MM
+    """
+
+    def get(self, request):
+        from .exportacao import gerar_csv, gerar_pdf, montar
+
+        formato = request.GET.get("formato", "")
+        if formato not in ("pdf", "csv"):
+            return HttpResponseBadRequest("Formato inválido. Use pdf ou csv.")
+        regime = request.GET.get("regime", "pagamento")
+        if regime not in dict(services.MODOS):
+            regime = "pagamento"
+        inicio, fim = services.resolver_periodo(
+            "custom", parse_mes(request.GET.get("inicio")), parse_mes(request.GET.get("fim")),
+        )
+        dados = montar(inicio, fim, regime)
+        if formato == "csv":
+            resposta = HttpResponse(gerar_csv(dados), content_type="text/csv; charset=utf-8")
+        else:
+            resposta = HttpResponse(gerar_pdf(dados), content_type="application/pdf")
+        resposta["Content-Disposition"] = f'attachment; filename="{dados.nome_arquivo}.{formato}"'
+        return resposta

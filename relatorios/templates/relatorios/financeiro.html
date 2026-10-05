@@ -4,9 +4,9 @@
 {% block cabecalho %}Relatório Financeiro{% endblock %}
 {% block descricao %}{{ inicio|mes }} a {{ fim|mes }} · {% if modo == "competencia" %}por mês de competência{% else %}por data de pagamento{% endif %}{% endblock %}
 {% block acoes %}
-  <span class="d-inline-block" tabindex="0" title="Disponível no plano Avançado">
-    <button type="button" class="btn btn-outline-secondary" disabled><i class="bi bi-download me-1"></i>Exportar <i class="bi bi-lock ms-1"></i></button>
-  </span>
+  {% url 'relatorios:exportar' as url_exportar %}
+  <a href="{{ url_exportar }}?formato=pdf&amp;regime={{ modo }}&amp;inicio={{ inicio_iso }}&amp;fim={{ fim_iso }}" class="btn btn-outline-primary"><i class="bi bi-file-earmark-pdf me-1"></i>Exportar PDF</a>
+  <a href="{{ url_exportar }}?formato=csv&amp;regime={{ modo }}&amp;inicio={{ inicio_iso }}&amp;fim={{ fim_iso }}" class="btn btn-outline-primary"><i class="bi bi-filetype-csv me-1"></i>Exportar CSV</a>
 {% endblock %}
 {% block conteudo %}
 <form method="get" class="cartao p-3 mb-4" id="filtros">
