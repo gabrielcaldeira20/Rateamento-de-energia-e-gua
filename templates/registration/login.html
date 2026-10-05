@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar{% endblock %}
+{% block publico %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center p-3">
+  <div class="cartao p-4 shadow-sm" style="width: 100%; max-width: 380px">
+    <div class="text-center mb-4">
+      <div class="serif fs-4 fw-semibold">Associação Alfa Serra Velha</div>
+      <div class="text-muted small">Sistema de Gestão Financeira</div>
+    </div>
+    {% if form.errors %}<div class="alert alert-danger small">Usuário ou senha incorretos.</div>{% endif %}
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="mb-3"><label class="form-label" for="id_username">Usuário</label>
+        <input class="form-control" id="id_username" name="username" autocomplete="username" required autofocus value="{{ form.username.value|default_if_none:"" }}"></div>
+      <div class="mb-3"><label class="form-label" for="id_password">Senha</label>
+        <input class="form-control" type="password" id="id_password" name="password" autocomplete="current-password" required></div>
+      <button class="btn btn-primary w-100">Entrar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

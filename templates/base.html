@@ -1,0 +1,68 @@
+{% load static %}<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Sistema de Gestão{% endblock %} — Alfa Serra Velha</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="{% static 'css/app.css' %}" rel="stylesheet">
+</head>
+<body>
+{% if user.is_authenticated %}
+<div class="d-flex">
+  <aside class="sidebar d-flex flex-column p-3 flex-shrink-0">
+    <div class="mb-4 px-2">
+      <div class="serif fs-5 fw-semibold lh-sm">Associação Alfa<br>Serra Velha</div>
+      <div class="small opacity-75 mt-1">Sistema de Gestão</div>
+    </div>
+    <nav class="flex-grow-1 d-flex flex-column gap-1">
+      {% for item in menu_itens %}
+        <a href="{{ item.url }}" class="{% if item.ativo %}ativo{% endif %}"><i class="bi {{ item.icone }}"></i>{{ item.rotulo }}</a>
+      {% endfor %}
+      {% for item in menu_bloqueados %}
+        <span class="bloqueado" aria-disabled="true" title="Disponível no plano {{ item.plano }}">
+          <i class="bi {{ item.icone }}"></i><span class="flex-grow-1">{{ item.rotulo }}</span><i class="bi bi-lock"></i>
+        </span>
+      {% endfor %}
+    </nav>
+    <form method="post" action="{% url 'logout' %}" class="mt-3">{% csrf_token %}
+      <button class="btn btn-sm btn-outline-light w-100"><i class="bi bi-box-arrow-left me-1"></i>Sair</button>
+    </form>
+  </aside>
+  <div class="flex-grow-1 min-w-0">
+    <nav class="navbar d-md-none px-3" style="background: var(--asv-verde-escuro)">
+      <span class="navbar-brand text-white serif">Alfa Serra Velha</span>
+      <div class="dropdown">
+        <button class="btn btn-sm btn-outline-light" data-bs-toggle="dropdown" aria-label="Abrir menu"><i class="bi bi-list"></i></button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          {% for item in menu_itens %}<li><a class="dropdown-item" href="{{ item.url }}">{{ item.rotulo }}</a></li>{% endfor %}
+          <li><hr class="dropdown-divider"></li>
+          <li><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="dropdown-item">Sair</button></form></li>
+        </ul>
+      </div>
+    </nav>
+    <main class="p-3 p-md-4" style="max-width: 1300px">
+      {% for m in messages %}
+        <div class="alert alert-{% if m.tags == 'error' %}danger{% else %}{{ m.tags }}{% endif %} alert-dismissible fade show" role="alert">
+          {{ m }}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+      {% endfor %}
+      <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-4">
+        <div>
+          <h1 class="h3 mb-1">{% block cabecalho %}{% endblock %}</h1>
+          <div class="text-muted small">{% block descricao %}{% endblock %}</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">{% block acoes %}{% endblock %}</div>
+      </div>
+      {% block conteudo %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% else %}
+  {% block publico %}{% endblock %}
+{% endif %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

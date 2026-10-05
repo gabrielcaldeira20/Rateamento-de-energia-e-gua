@@ -1,0 +1,42 @@
+/* Identidade do protótipo: verde musgo, marrom terra, bege areia. */
+:root {
+  --asv-verde: #4a5d3a;
+  --asv-verde-escuro: #36452a;
+  --asv-marrom: #8b5e3c;
+  --asv-areia: #f5efe3;
+  --asv-pago: #4c9a55;
+  --asv-pendente: #c99a2e;
+  --asv-atraso: #b3492f;
+  --bs-primary: var(--asv-verde);
+  --bs-primary-rgb: 74, 93, 58;
+  --bs-body-bg: var(--asv-areia);
+}
+body { background: var(--asv-areia); }
+h1, h2, h3, .serif { font-family: Georgia, "Times New Roman", serif; }
+.btn-primary { --bs-btn-bg: var(--asv-verde); --bs-btn-border-color: var(--asv-verde);
+  --bs-btn-hover-bg: var(--asv-verde-escuro); --bs-btn-hover-border-color: var(--asv-verde-escuro);
+  --bs-btn-active-bg: var(--asv-verde-escuro); --bs-btn-disabled-bg: var(--asv-verde); --bs-btn-disabled-border-color: var(--asv-verde); }
+.btn-outline-primary { --bs-btn-color: var(--asv-verde); --bs-btn-border-color: var(--asv-verde);
+  --bs-btn-hover-bg: var(--asv-verde); --bs-btn-hover-border-color: var(--asv-verde); }
+.text-primary { color: var(--asv-verde) !important; }
+.sidebar { width: 260px; min-height: 100vh; background: var(--asv-verde-escuro); color: #f3eee2; }
+.sidebar a, .sidebar .bloqueado { color: #f3eee2; text-decoration: none; display: flex; align-items: center;
+  gap: .6rem; padding: .5rem .75rem; border-radius: .4rem; font-size: .92rem; }
+.sidebar a:hover, .sidebar a.ativo { background: rgba(255,255,255,.12); }
+.sidebar a.ativo { font-weight: 600; }
+.sidebar .bloqueado { opacity: .5; cursor: not-allowed; }
+.cartao { background: #fff; border: 1px solid #e3dccd; border-radius: .75rem; }
+.valor-grande { font-family: Georgia, serif; font-size: 1.6rem; font-weight: 600; }
+.text-pago { color: var(--asv-pago) !important; }
+.text-pendente { color: var(--asv-pendente) !important; }
+.text-atraso { color: var(--asv-atraso) !important; }
+.badge-paga { background: rgba(76,154,85,.15); color: var(--asv-pago); }
+.badge-parcial { background: rgba(201,154,46,.18); color: #8a6a1c; }
+.badge-pendente { background: rgba(179,73,47,.15); color: var(--asv-atraso); }
+.linha-invalida { background: rgba(179,73,47,.10) !important; }
+.linha-aviso { background: rgba(201,154,46,.12) !important; }
+.tabela-rolagem { max-height: 60vh; overflow-y: auto; }
+.tabela-rolagem thead th { position: sticky; top: 0; z-index: 2; background: #efe9dc; }
+.table > :not(caption) > * > * { background-color: transparent; }
+.min-w-0 { min-width: 0; }
+@media (max-width: 767.98px) { .sidebar { display: none !important; } }
