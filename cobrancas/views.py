@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
 
+from core.models import Configuracao
 from core.utils import formatar_brl, mes_atual, mes_iso, mes_label, parse_mes
 
 from . import services
@@ -40,15 +41,13 @@ class ListaView(LoginRequiredMixin, View):
             "meses": [(mes_iso(m), mes_label(m)) for m in meses],
             "mes_atual": mes_iso(mes_atual()),
             "links_whatsapp": self.links_whatsapp(abertas),
+            "sem_chave_pix": not Configuracao.atual().chave_pix,
         }
         return render(request, "cobrancas/lista.html", contexto)
 
     def links_whatsapp(self, abertas):
-        try:
-            from .whatsapp import link_whatsapp
-        except ImportError:
-            return {}
-        return {c.pk: link_whatsapp(c) for c in abertas}
+        config = Configuracao.atual()
+        return {c.pk: services.link_whatsapp(c, config) for c in abertas}
 
 
 class PagarView(LoginRequiredMixin, View):

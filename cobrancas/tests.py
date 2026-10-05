@@ -159,7 +159,67 @@ class TelasTests(TestCase):
         resp = self.client.get(reverse("cobrancas:lista"), {"tipo": "AGUA", "mes": "2026-06", "status": "todos"})
         self.assertEqual(len(resp.context["lista"]), 1)
 
+    def test_botao_whatsapp_na_lista(self):
+        cobranca(self.ana, "80.00")
+        sem_tel = fabrica.associado("Sem Telefone", contato="")
+        cobranca(sem_tel, "80.00")
+        resp = self.client.get(reverse("cobrancas:lista"))
+        self.assertContains(resp, "https://wa.me/5538999990000?text=")
+        self.assertContains(resp, "sem telefone")
+        self.assertContains(resp, "chave PIX não está cadastrada")
+
     def test_saldo_aparece_na_lista_de_associados(self):
         cobranca(self.ana, "80.00")
         resp = self.client.get(reverse("associados:lista"))
         self.assertContains(resp, "R$ 80,00")
+
+
+class WhatsAppTests(TestCase):
+    def setUp(self):
+        config = Configuracao.atual()
+        config.chave_pix = "pix@alfaserra.org"
+        config.save()
+        self.ana = fabrica.associado("Ana Souza", contato="(38) 99876-5432")
+
+    def test_telefone_sem_prefixo_recebe_55(self):
+        self.assertEqual(services.telefone_whatsapp("(38) 99876-5432"), "5538998765432")
+        self.assertEqual(services.telefone_whatsapp("38 3221-1234"), "553832211234")
+
+    def test_telefone_com_prefixo_55_nao_duplica(self):
+        self.assertEqual(services.telefone_whatsapp("+55 (38) 99876-5432"), "5538998765432")
+        self.assertEqual(services.telefone_whatsapp("5538998765432"), "5538998765432")
+
+    def test_ddd_55_sem_codigo_do_pais_recebe_prefixo(self):
+        self.assertEqual(services.telefone_whatsapp("(55) 99876-5432"), "5555998765432")
+
+    def test_sem_telefone(self):
+        self.assertIsNone(services.telefone_whatsapp(""))
+        self.assertIsNone(services.telefone_whatsapp("1234"))
+        sem = fabrica.associado("Sem", contato="não tem")
+        self.assertIsNone(services.link_whatsapp(cobranca(sem)))
+
+    def test_mensagem_usa_saldo_restante_e_chave_pix(self):
+        c = cobranca(self.ana, "1250.00", tipo=TipoCobranca.ENERGIA, rede="SEDE")
+        services.registrar_pagamento(c.pk, Decimal("200.00"), DIA)
+        c.refresh_from_db()
+        self.assertEqual(
+            services.mensagem_whatsapp(c),
+            "Olá, Ana Souza! Passando para lembrar da cobrança de energia (Sede) de jun/2026, "
+            "no valor de R$ 1.050,00. Chave PIX: pix@alfaserra.org.",
+        )
+
+    def test_link_codificado(self):
+        from urllib.parse import parse_qs, urlparse
+        c = cobranca(self.ana, "40.00")
+        link = services.link_whatsapp(c)
+        partes = urlparse(link)
+        self.assertEqual(f"{partes.scheme}://{partes.netloc}{partes.path}", "https://wa.me/5538998765432")
+        self.assertNotIn(" ", link)
+        texto = parse_qs(partes.query)["text"][0]
+        self.assertIn("mensalidade de jun/2026, no valor de R$ 40,00", texto)
+
+    def test_cobranca_paga_nao_tem_link(self):
+        c = cobranca(self.ana, "40.00")
+        services.registrar_pagamento(c.pk, Decimal("40.00"), DIA)
+        c.refresh_from_db()
+        self.assertIsNone(services.link_whatsapp(c))

@@ -12,6 +12,7 @@
   <button type="submit" form="form-lote" id="botao-lote" class="btn btn-primary" hidden><i class="bi bi-check2-circle me-1"></i><span>Marcar como pago</span></button>
 {% endblock %}
 {% block conteudo %}
+{% if sem_chave_pix %}<div class="alert alert-warning small"><i class="bi bi-exclamation-triangle me-1"></i>A chave PIX não está cadastrada. Os lembretes pelo WhatsApp sairão sem ela. <a href="{% url 'core:configuracoes' %}">Cadastrar nas Configurações</a>.</div>{% endif %}
 <form method="get" class="cartao p-3 mb-3 row g-2">
   <div class="col-md-3"><input name="busca" value="{{ filtros.busca }}" class="form-control" placeholder="Buscar por nome"></div>
   <div class="col-md-3"><select name="tipo" class="form-select">

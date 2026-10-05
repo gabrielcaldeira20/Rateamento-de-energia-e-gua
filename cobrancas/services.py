@@ -1,15 +1,17 @@
-"""Regras de cobrança: geração mensal, pagamentos, crédito e baixa em lote."""
+"""Regras de cobrança: geração mensal, pagamentos, crédito, baixa em lote e WhatsApp."""
+import re
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
+from urllib.parse import quote
 
 from django.db import transaction
 from django.db.models import F, Sum
 
 from associados.models import Associado
 from core.models import Configuracao
-from core.utils import hoje
+from core.utils import formatar_brl, hoje, mes_label
 
 from .models import Cobranca, MovimentoCredito, Pagamento, RedeCobranca, StatusCobranca, TipoCobranca
 
@@ -180,3 +182,38 @@ def filtrar(busca="", tipo="todos", competencia=None, status="PENDENTE"):
     if status and status != "todos":
         qs = qs.filter(status=status)
     return qs.order_by("-competencia", "tipo", "associado__nome")
+
+
+# ---------------------------------------------------------------- WhatsApp
+
+def telefone_whatsapp(contato):
+    """Só dígitos, com o prefixo 55 do Brasil. Retorna None se não houver telefone válido.
+
+    Números com 10 ou 11 dígitos (DDD + número) sempre recebem 55, inclusive os do DDD 55.
+    """
+    digitos = re.sub(r"\D", "", contato or "")
+    if len(digitos) < 10:
+        return None
+    if len(digitos) >= 12 and digitos.startswith("55"):
+        return digitos
+    return "55" + digitos
+
+
+def mensagem_whatsapp(cobranca, config=None):
+    config = config or Configuracao.atual()
+    tipo = cobranca.rotulo_tipo
+    tipo = tipo[0].lower() + tipo[1:]
+    return (
+        f"Olá, {cobranca.associado.nome}! Passando para lembrar da cobrança de {tipo} "
+        f"de {mes_label(cobranca.competencia)}, no valor de R$ {formatar_brl(cobranca.saldo, simbolo=False)}. "
+        f"Chave PIX: {config.chave_pix}."
+    )
+
+
+def link_whatsapp(cobranca, config=None):
+    """Link wa.me com a mensagem pronta. O envio é manual, dentro do WhatsApp."""
+    telefone = telefone_whatsapp(cobranca.associado.contato)
+    if not telefone or not cobranca.em_aberto:
+        return None
+    texto = quote(mensagem_whatsapp(cobranca, config), safe="")
+    return f"https://wa.me/{telefone}?text={texto}"
