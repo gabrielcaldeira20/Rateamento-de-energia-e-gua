@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load formatos %}
+{% block titulo %}Cobranças{% endblock %}
+{% block cabecalho %}Painel de Cobranças{% endblock %}
+{% block descricao %}{{ qtd_abertas }} em aberto visíveis — {{ total_aberto|brl }} a receber{% endblock %}
+{% block acoes %}
+  <form method="post" action="{% url 'cobrancas:gerar_mensais' %}" class="d-flex gap-2">{% csrf_token %}
+    <input type="hidden" name="filtros" value="{{ filtros_query }}">
+    <input type="month" name="competencia" value="{{ mes_atual }}" class="form-control" style="width: 11rem" aria-label="Mês das cobranças mensais">
+    <button class="btn btn-outline-primary text-nowrap"><i class="bi bi-plus-circle me-1"></i>Gerar mensalidade e água</button>
+  </form>
+  <button type="submit" form="form-lote" id="botao-lote" class="btn btn-primary" hidden><i class="bi bi-check2-circle me-1"></i><span>Marcar como pago</span></button>
+{% endblock %}
+{% block conteudo %}
+<form method="get" class="cartao p-3 mb-3 row g-2">
+  <div class="col-md-3"><input name="busca" value="{{ filtros.busca }}" class="form-control" placeholder="Buscar por nome"></div>
+  <div class="col-md-3"><select name="tipo" class="form-select">
+    <option value="todos">Tipo: todos</option>
+    {% for valor, rotulo in tipos %}<option value="{{ valor }}" {% if filtros.tipo == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+  </select></div>
+  <div class="col-md-2"><select name="mes" class="form-select">
+    <option value="todos">Mês: todos</option>
+    {% for valor, rotulo in meses %}<option value="{{ valor }}" {% if filtros.mes == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+  </select></div>
+  <div class="col-md-2"><select name="status" class="form-select">
+    <option value="todos" {% if filtros.status == "todos" %}selected{% endif %}>Status: todos</option>
+    {% for valor, rotulo in status_opcoes %}<option value="{{ valor }}" {% if filtros.status == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+  </select></div>
+  <div class="col-md-2"><button class="btn btn-outline-primary w-100"><i class="bi bi-funnel me-1"></i>Filtrar</button></div>
+</form>
+
+<form method="post" action="{% url 'cobrancas:lote' %}" id="form-lote">{% csrf_token %}
+<input type="hidden" name="filtros" value="{{ filtros_query }}">
+<div class="cartao overflow-hidden"><div class="table-responsive">
+<table class="table align-middle mb-0">
+  <thead class="table-light small text-uppercase"><tr>
+    <th style="width:2.5rem"></th><th>Associado</th><th>Tipo</th><th>Competência</th><th>Vencimento</th><th class="text-end">Valor</th><th class="text-end">Saldo</th><th>Status</th><th class="text-end">Ações</th>
+  </tr></thead>
+  <tbody>
+  {% for c in lista %}
+    <tr>
+      <td>{% if c.em_aberto %}<input type="checkbox" name="ids" value="{{ c.pk }}" class="form-check-input selecao" aria-label="Selecionar cobrança de {{ c.associado.nome }}">{% endif %}</td>
+      <td class="fw-medium">{{ c.associado.nome }}</td>
+      <td>{{ c.rotulo_tipo }}{% if c.valor_disponibilidade %}<div class="small text-muted">inclui {{ c.valor_disponibilidade|brl }} de disponibilidade</div>{% endif %}</td>
+      <td class="text-muted">{{ c.competencia|mes }}</td>
+      <td class="text-muted">{% if c.vencimento %}{{ c.vencimento|date:"d/m/Y" }}{% if c.em_atraso %} <span class="badge rounded-pill badge-pendente">Em atraso</span>{% endif %}{% else %}—{% endif %}</td>
+      <td class="text-end">{{ c.valor|brl }}</td>
+      <td class="text-end fw-medium">{{ c.saldo|brl }}</td>
+      <td><span class="badge rounded-pill badge-{{ c.status|lower }}">{{ c.get_status_display }}</span></td>
+      <td class="text-end text-nowrap">
+        {% if c.em_aberto %}
+          {% include "cobrancas/_whatsapp.html" %}
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modal-pagar"
+            data-acao="{% url 'cobrancas:pagar' c.pk %}" data-nome="{{ c.associado.nome }}"
+            data-descricao="{{ c.rotulo_tipo }} · {{ c.competencia|mes }} · saldo {{ c.saldo|brl }}"
+            data-saldo="{{ c.saldo|stringformat:'s' }}">Registrar pagamento</button>
+        {% endif %}
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="9" class="text-center text-muted py-5">Nenhuma cobrança encontrada com esses filtros.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div></div>
+</form>
+
+<div class="modal fade" id="modal-pagar" tabindex="-1" aria-labelledby="titulo-pagar"><div class="modal-dialog"><div class="modal-content">
+  <form method="post" id="form-pagar">{% csrf_token %}
+    <input type="hidden" name="filtros" value="{{ filtros_query }}">
+    <div class="modal-header"><h2 class="modal-title h5" id="titulo-pagar">Registrar pagamento</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+    <div class="modal-body">
+      <div class="bg-light rounded p-3 small mb-3"><strong id="pagar-nome"></strong><div class="text-muted" id="pagar-descricao"></div></div>
+      <div class="mb-3"><label class="form-label" for="pagar-valor">Valor pago (R$)</label>
+        <input type="number" step="0.01" min="0.01" name="valor" id="pagar-valor" class="form-control" required>
+        <div class="form-text">Menor que o saldo: fica parcial. Maior: quita e o excedente vira crédito.</div></div>
+      <div class="mb-3"><label class="form-label" for="pagar-data">Data do pagamento</label>
+        <input type="date" name="data" id="pagar-data" class="form-control" required></div>
+      <div class="mb-1"><label class="form-label" for="pagar-obs">Observação</label>
+        <input name="observacao" id="pagar-obs" maxlength="200" class="form-control" placeholder="Ex.: pago em dinheiro"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Confirmar pagamento</button></div>
+  </form>
+</div></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    var hoje = new Date();
+    var hojeIso = hoje.getFullYear() + "-" + String(hoje.getMonth() + 1).padStart(2, "0") + "-" + String(hoje.getDate()).padStart(2, "0");
+    document.getElementById("modal-pagar").addEventListener("show.bs.modal", function (evento) {
+      var botao = evento.relatedTarget;
+      document.getElementById("form-pagar").action = botao.dataset.acao;
+      document.getElementById("pagar-nome").textContent = botao.dataset.nome;
+      document.getElementById("pagar-descricao").textContent = botao.dataset.descricao;
+      document.getElementById("pagar-valor").value = botao.dataset.saldo;
+      document.getElementById("pagar-data").value = hojeIso;
+      document.getElementById("pagar-obs").value = "";
+    });
+    var botaoLote = document.getElementById("botao-lote");
+    function atualizarLote() {
+      var n = document.querySelectorAll(".selecao:checked").length;
+      botaoLote.hidden = n === 0;
+      botaoLote.querySelector("span").textContent = "Marcar " + n + " como pago";
+    }
+    document.querySelectorAll(".selecao").forEach(function (c) { c.addEventListener("change", atualizarLote); });
+  })();
+</script>
+{% endblock %}
