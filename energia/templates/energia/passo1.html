@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load formatos %}
+{% block titulo %}Lançamento de Energia{% endblock %}
+{% block cabecalho %}Lançamento de Energia{% endblock %}
+{% block descricao %}Distribui o valor da conta entre os associados de uma rede.{% endblock %}
+{% block conteudo %}
+{% include "energia/_passos.html" %}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <form method="post" class="cartao p-4">{% csrf_token %}
+      <h2 class="h5 mb-3">Passo 1 — Conta da concessionária</h2>
+      {% if form.non_field_errors %}<div class="alert alert-danger small"><i class="bi bi-exclamation-circle me-1"></i>{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
+      <div class="row">
+        {% for campo in form %}
+        <div class="col-md-6 mb-3">
+          <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+          {{ campo }}
+          {% for e in campo.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="d-flex justify-content-end"><button class="btn btn-primary">Calcular fator <i class="bi bi-chevron-right"></i></button></div>
+    </form>
+  </div>
+  <div class="col-lg-5">
+    <div class="cartao p-4">
+      <h2 class="h6 text-uppercase text-muted mb-3">Últimos fechamentos</h2>
+      <table class="table table-sm small mb-0">
+        <thead class="text-muted"><tr><th>Rede</th><th>Competência</th><th class="text-end">Conta</th><th class="text-end">Fator</th><th class="text-end">Perda</th></tr></thead>
+        <tbody>
+        {% for f in fechamentos %}
+          <tr><td>{{ f.get_rede_display }}</td><td>{{ f.competencia|mes }}</td><td class="text-end">{{ f.valor_total|brl }}</td><td class="text-end">{{ f.fator }}</td><td class="text-end">{{ f.perda_kwh }} kWh</td></tr>
+        {% empty %}<tr><td colspan="5" class="text-muted">Nenhum fechamento ainda.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  // Ao trocar o mês, sugere o vencimento: dia 10 do mês seguinte (editável).
+  document.getElementById("id_competencia").addEventListener("change", function (e) {
+    var partes = e.target.value.split("-");
+    if (partes.length !== 2) return;
+    var ano = parseInt(partes[0], 10), mes = parseInt(partes[1], 10) + 1;
+    if (mes > 12) { mes = 1; ano += 1; }
+    document.getElementById("id_vencimento").value = ano + "-" + String(mes).padStart(2, "0") + "-10";
+  });
+</script>
+{% endblock %}

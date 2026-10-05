@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load formatos %}
+{% block titulo %}Mês fechado — Lançamento de Energia{% endblock %}
+{% block cabecalho %}Lançamento de Energia{% endblock %}
+{% block conteudo %}
+{% include "energia/_passos.html" %}
+<div class="cartao p-5 text-center" style="max-width: 560px">
+  <div class="fs-1 text-pago"><i class="bi bi-check-circle"></i></div>
+  <h2 class="h4 mt-2">Mês fechado</h2>
+  <p class="text-muted mb-1"><strong>{{ r.qtd }}</strong> cobranças de energia geradas para a rede {{ r.fechamento.get_rede_display }} ({{ r.fechamento.competencia|mes }}).</p>
+  <p class="valor-grande text-primary mb-1">{{ r.total|brl }}</p>
+  {% if r.qtd_multas %}<p class="text-atraso small">{{ r.qtd_multas }} multa(s) por consumo excessivo: {{ r.total_multas|brl }}</p>{% endif %}
+  <p class="small text-muted">As cobranças já aparecem no painel de cobranças.</p>
+  <a href="{% url 'energia:passo1' %}" class="btn btn-outline-primary">Novo lançamento</a>
+</div>
+{% endblock %}
