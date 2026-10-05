@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load formatos %}
+{% block titulo %}Associados{% endblock %}
+{% block cabecalho %}Associados{% endblock %}
+{% block descricao %}{{ linhas|length }} de {{ total }} associados visíveis{% endblock %}
+{% block acoes %}<a href="{% url 'associados:novo' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Novo associado</a>{% endblock %}
+{% block conteudo %}
+<form method="get" class="cartao p-3 mb-3 row g-2">
+  <div class="col-md-3"><input name="busca" value="{{ filtros.busca }}" class="form-control" placeholder="Buscar por nome"></div>
+  <div class="col-md-3"><select name="rede" class="form-select">
+    <option value="todas" {% if filtros.rede == "todas" %}selected{% endif %}>Todas as redes</option>
+    <option value="sede" {% if filtros.rede == "sede" %}selected{% endif %}>Rede da Sede</option>
+    <option value="poco" {% if filtros.rede == "poco" %}selected{% endif %}>Rede do Poço</option></select></div>
+  <div class="col-md-2"><select name="agua" class="form-select">
+    <option value="todos" {% if filtros.agua == "todos" %}selected{% endif %}>Água: todos</option>
+    <option value="ligada" {% if filtros.agua == "ligada" %}selected{% endif %}>Água ligada</option>
+    <option value="desligada" {% if filtros.agua == "desligada" %}selected{% endif %}>Água desligada</option></select></div>
+  <div class="col-md-2"><select name="status" class="form-select">
+    <option value="ativos" {% if filtros.status == "ativos" %}selected{% endif %}>Ativos</option>
+    <option value="inativos" {% if filtros.status == "inativos" %}selected{% endif %}>Inativos</option>
+    <option value="todos" {% if filtros.status == "todos" %}selected{% endif %}>Todos</option></select></div>
+  <div class="col-md-2"><button class="btn btn-outline-primary w-100"><i class="bi bi-funnel me-1"></i>Filtrar</button></div>
+</form>
+
+<div class="cartao overflow-hidden"><div class="table-responsive">
+<table class="table align-middle mb-0">
+  <thead class="table-light small text-uppercase"><tr>
+    <th>Nome</th><th>Contato</th><th>Redes</th><th>Água</th><th>Mensalidade</th><th class="text-end">Saldo devedor</th><th class="text-end">Ações</th>
+  </tr></thead>
+  <tbody>
+  {% for linha in linhas %}{% with a=linha.a %}
+    <tr class="{% if not a.ativo %}opacity-50{% endif %}">
+      <td class="fw-medium"><a href="{% url 'associados:detalhe' a.pk %}" class="text-reset">{{ a.nome }}</a>
+        {% if not a.ativo %}<span class="badge text-bg-light ms-1">Inativo</span>{% endif %}
+        {% if a.e_associacao %}<span class="badge text-bg-light ms-1">Associação</span>{% endif %}</td>
+      <td class="text-muted">{{ a.contato|default:"sem contato" }}</td>
+      <td>
+        {% if a.rede_sede %}<span class="badge rounded-pill text-bg-light">Sede{% if not a.padrao_ligado_sede %} (sem padrão){% endif %}</span>{% endif %}
+        {% if a.rede_poco %}<span class="badge rounded-pill text-bg-light">Poço{% if not a.padrao_ligado_poco %} (sem padrão){% endif %}</span>{% endif %}
+      </td>
+      <td>{% if a.agua_ligada %}<span class="badge rounded-pill badge-paga">Ligada</span>{% else %}<span class="badge rounded-pill text-bg-light">Desligada</span>{% endif %}</td>
+      <td>{{ a.valor_mensalidade|brl }}</td>
+      <td class="text-end fw-medium">
+        {% if linha.saldo is None %}—{% elif linha.saldo > 0 %}<span class="text-atraso">{{ linha.saldo|brl }}</span>{% else %}<span class="text-pago">Em dia</span>{% endif %}
+      </td>
+      <td class="text-end text-nowrap">
+        {% if a.ativo %}
+          <a href="{% url 'associados:editar' a.pk %}" class="btn btn-sm btn-light" title="Editar"><i class="bi bi-pencil"></i></a>
+          <button type="button" class="btn btn-sm btn-light" title="Inativar" data-bs-toggle="modal" data-bs-target="#inativar-{{ a.pk }}"><i class="bi bi-trash text-atraso"></i></button>
+          <div class="modal fade text-start" id="inativar-{{ a.pk }}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+            <div class="modal-header"><h2 class="modal-title h5">Inativar associado</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body text-wrap"><strong>{{ a.nome }}</strong> será marcado como inativo. O histórico de cobranças continua visível, mas o associado deixa de aparecer em novos lançamentos. É possível reativar depois.</div>
+            <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+              <form method="post" action="{% url 'associados:inativar' a.pk %}">{% csrf_token %}<button class="btn btn-danger">Sim, inativar</button></form></div>
+          </div></div></div>
+        {% else %}
+          <form method="post" action="{% url 'associados:reativar' a.pk %}" class="d-inline">{% csrf_token %}
+            <button class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-counterclockwise me-1"></i>Reativar</button></form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endwith %}{% empty %}
+    <tr><td colspan="7" class="text-center text-muted py-5">Nenhum associado encontrado.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div></div>
+{% endblock %}

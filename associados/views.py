@@ -1,3 +1,77 @@
-from django.shortcuts import render
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views import View
 
-# Create your views here.
+from . import services
+from .forms import AssociadoForm
+from .models import Associado
+
+
+class ListaView(LoginRequiredMixin, View):
+    def get(self, request):
+        filtros = {
+            "busca": request.GET.get("busca", "").strip(),
+            "rede": request.GET.get("rede", "todas"),
+            "agua": request.GET.get("agua", "todos"),
+            "status": request.GET.get("status", "ativos"),
+        }
+        lista = list(services.filtrar(**filtros))
+        contexto = {
+            "linhas": self.linhas(lista),
+            "filtros": filtros,
+            "total": Associado.objects.count(),
+        }
+        return render(request, "associados/lista.html", contexto)
+
+    def linhas(self, lista):
+        """Cada linha da tabela com o saldo devedor calculado pelo app de cobranças."""
+        try:
+            from cobrancas.services import saldos_devedores
+        except ImportError:
+            return [{"a": a, "saldo": None} for a in lista]
+        saldos = saldos_devedores([a.pk for a in lista])
+        return [{"a": a, "saldo": saldos.get(a.pk)} for a in lista]
+
+
+class FormularioView(LoginRequiredMixin, View):
+    template = "associados/form.html"
+
+    def objeto(self, pk):
+        return get_object_or_404(Associado, pk=pk) if pk else None
+
+    def get(self, request, pk=None):
+        return render(request, self.template, {"form": AssociadoForm(instance=self.objeto(pk)), "editando": pk})
+
+    def post(self, request, pk=None):
+        form = AssociadoForm(request.POST, instance=self.objeto(pk))
+        if form.is_valid():
+            associado = form.save()
+            acao = "atualizado" if pk else "cadastrado"
+            messages.success(request, f"{associado.nome} {acao}.")
+            return redirect("associados:lista")
+        return render(request, self.template, {"form": form, "editando": pk})
+
+
+class DetalheView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        associado = get_object_or_404(Associado, pk=pk)
+        contexto = {"a": associado}
+        try:
+            from cobrancas.services import resumo_associado
+        except ImportError:
+            resumo_associado = None
+        if resumo_associado:
+            contexto.update(resumo_associado(associado))
+        return render(request, "associados/detalhe.html", contexto)
+
+
+class AtivoView(LoginRequiredMixin, View):
+    ativo = True
+
+    def post(self, request, pk):
+        associado = get_object_or_404(Associado, pk=pk)
+        services.definir_ativo(associado, self.ativo)
+        texto = "reativado" if self.ativo else "marcado como inativo"
+        messages.success(request, f"{associado.nome} {texto}.")
+        return redirect("associados:lista")

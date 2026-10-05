@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}{% if editando %}Editar{% else %}Novo{% endif %} associado{% endblock %}
+{% block cabecalho %}{% if editando %}Editar associado{% else %}Novo associado{% endif %}{% endblock %}
+{% block conteudo %}
+<form method="post" class="cartao p-4" style="max-width: 720px">{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+  {% include "associados/_campo.html" with campo=form.nome %}
+  <div class="row">
+    <div class="col-md-6">{% include "associados/_campo.html" with campo=form.contato %}</div>
+    <div class="col-md-6">{% include "associados/_campo.html" with campo=form.valor_mensalidade %}</div>
+  </div>
+  {% include "associados/_campo.html" with campo=form.endereco %}
+  {% include "associados/_campo.html" with campo=form.e_associacao %}
+
+  <div class="border rounded p-3 mb-3">
+    <div class="small text-uppercase text-muted fw-medium mb-2">Serviços</div>
+    {% include "associados/_campo.html" with campo=form.rede_sede %}
+    <div class="ms-4" data-depende="id_rede_sede">
+      {% include "associados/_campo.html" with campo=form.padrao_ligado_sede %}
+      {% include "associados/_campo.html" with campo=form.leitura_inicial_sede %}
+    </div>
+    {% include "associados/_campo.html" with campo=form.rede_poco %}
+    <div class="ms-4" data-depende="id_rede_poco">
+      {% include "associados/_campo.html" with campo=form.padrao_ligado_poco %}
+      {% include "associados/_campo.html" with campo=form.leitura_inicial_poco %}
+    </div>
+    {% include "associados/_campo.html" with campo=form.agua_ligada %}
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'associados:lista' %}" class="btn btn-light">Cancelar</a>
+    <button class="btn btn-primary">Salvar</button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+  // Mostra padrão e leitura inicial só quando a rede está marcada.
+  document.querySelectorAll("[data-depende]").forEach(function (bloco) {
+    var chave = document.getElementById(bloco.dataset.depende);
+    function atualizar() { bloco.hidden = !chave.checked; }
+    chave.addEventListener("change", atualizar);
+    atualizar();
+  });
+</script>
+{% endblock %}

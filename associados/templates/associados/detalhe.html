@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load formatos %}
+{% block titulo %}{{ a.nome }}{% endblock %}
+{% block cabecalho %}{{ a.nome }}{% if not a.ativo %} <span class="badge text-bg-light fs-6 align-middle">Inativo</span>{% endif %}{% endblock %}
+{% block descricao %}{{ a.endereco }}{% endblock %}
+{% block acoes %}
+  <a href="{% url 'associados:lista' %}" class="btn btn-light">Voltar</a>
+  {% if a.ativo %}<a href="{% url 'associados:editar' a.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i>Editar</a>{% endif %}
+{% endblock %}
+{% block conteudo %}
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="cartao p-4">
+      <dl class="row mb-0 small">
+        <dt class="col-6 text-muted fw-normal">Contato/WhatsApp</dt><dd class="col-6 text-end">{{ a.contato|default:"—" }}</dd>
+        <dt class="col-6 text-muted fw-normal">Rede da Sede</dt><dd class="col-6 text-end">{% if a.rede_sede %}Sim, {% if a.padrao_ligado_sede %}padrão ligado{% else %}sem padrão{% endif %}{% else %}Não{% endif %}</dd>
+        <dt class="col-6 text-muted fw-normal">Rede do Poço</dt><dd class="col-6 text-end">{% if a.rede_poco %}Sim, {% if a.padrao_ligado_poco %}padrão ligado{% else %}sem padrão{% endif %}{% else %}Não{% endif %}</dd>
+        <dt class="col-6 text-muted fw-normal">Água</dt><dd class="col-6 text-end">{% if a.agua_ligada %}Ligada{% else %}Desligada{% endif %}</dd>
+        <dt class="col-6 text-muted fw-normal">Mensalidade</dt><dd class="col-6 text-end">{{ a.valor_mensalidade|brl }}</dd>
+        {% if saldo_devedor is not None %}
+        <dt class="col-6 text-muted fw-normal">Saldo devedor</dt>
+        <dd class="col-6 text-end fw-semibold">{% if saldo_devedor > 0 %}<span class="text-atraso">{{ saldo_devedor|brl }}</span>{% else %}<span class="text-pago">Em dia</span>{% endif %}</dd>
+        <dt class="col-6 text-muted fw-normal">Crédito disponível</dt><dd class="col-6 text-end">{{ credito|brl }}</dd>
+        {% endif %}
+      </dl>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="cartao p-4">
+      <h2 class="h6 text-uppercase text-muted mb-3">Histórico de cobranças</h2>
+      <div class="table-responsive" style="max-height: 420px">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="small text-muted"><tr><th>Tipo</th><th>Competência</th><th class="text-end">Valor</th><th class="text-end">Saldo</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for c in cobrancas %}
+          <tr><td>{{ c.rotulo_tipo }}</td><td>{{ c.competencia|mes }}</td><td class="text-end">{{ c.valor|brl }}</td><td class="text-end">{{ c.saldo|brl }}</td>
+            <td><span class="badge rounded-pill badge-{{ c.status|lower }}">{{ c.get_status_display }}</span></td></tr>
+        {% empty %}
+          <tr><td colspan="5" class="text-muted">Sem cobranças.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

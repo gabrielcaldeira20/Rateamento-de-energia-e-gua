@@ -6,7 +6,7 @@ Para rodar os testes: `DEBUG=True python manage.py test`.
 | Fase | Item | Status | Testes |
 |---|---|---|---|
 | 1 | Esqueleto, login real, Configuração, template base | [x] pronto | core/tests.py |
-| 2 | Associados | [ ] | |
+| 2 | Associados | [x] pronto | associados/tests.py |
 | 3 | Energia: 3 passos, rateio, disponibilidade, multa, validações | [ ] | |
 | 4 | Cobranças: geração mensal, pagamentos, parcial, crédito, baixa em lote | [ ] | |
 | 5 | Despesas e painel inicial | [ ] | |
