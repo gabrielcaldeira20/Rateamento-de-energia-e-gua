@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load formatos %}
+{% block titulo %}Despesas{% endblock %}
+{% block cabecalho %}Despesas{% endblock %}
+{% block descricao %}{{ lista|length }} despesa(s) — total de {{ total|brl }}{% endblock %}
+{% block acoes %}<a href="{% url 'despesas:nova' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nova despesa</a>{% endblock %}
+{% block conteudo %}
+<form method="get" class="cartao p-3 mb-3 row g-2">
+  <div class="col-md-4"><select name="mes" class="form-select">
+    <option value="todos">Mês: todos</option>
+    {% for valor, rotulo in meses %}<option value="{{ valor }}" {% if filtros.mes == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+  </select></div>
+  <div class="col-md-4"><select name="categoria" class="form-select">
+    <option value="todas">Categoria: todas</option>
+    {% for valor, rotulo in categorias %}<option value="{{ valor }}" {% if filtros.categoria == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+  </select></div>
+  <div class="col-md-4"><button class="btn btn-outline-primary w-100"><i class="bi bi-funnel me-1"></i>Filtrar</button></div>
+</form>
+<div class="cartao overflow-hidden"><div class="table-responsive">
+<table class="table align-middle mb-0">
+  <thead class="table-light small text-uppercase"><tr><th>Competência</th><th>Data</th><th>Categoria</th><th>Descrição</th><th class="text-end">Valor</th><th class="text-end">Ações</th></tr></thead>
+  <tbody>
+  {% for d in lista %}
+    <tr>
+      <td class="text-muted">{{ d.competencia|mes }}</td><td class="text-muted">{{ d.data|date:"d/m/Y" }}</td>
+      <td>{{ d.rotulo_categoria }}</td><td>{{ d.descricao }}</td><td class="text-end fw-medium">{{ d.valor|brl }}</td>
+      <td class="text-end text-nowrap">
+        <a href="{% url 'despesas:editar' d.pk %}" class="btn btn-sm btn-light" title="Editar"><i class="bi bi-pencil"></i></a>
+        <button type="button" class="btn btn-sm btn-light" title="Excluir" data-bs-toggle="modal" data-bs-target="#excluir-{{ d.pk }}"><i class="bi bi-trash text-atraso"></i></button>
+        <div class="modal fade text-start" id="excluir-{{ d.pk }}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+          <div class="modal-header"><h2 class="modal-title h5">Excluir despesa</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+          <div class="modal-body text-wrap">Excluir <strong>{{ d.descricao }}</strong> ({{ d.valor|brl }})? Essa ação não pode ser desfeita.</div>
+          <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+            <form method="post" action="{% url 'despesas:excluir' d.pk %}">{% csrf_token %}<button class="btn btn-danger">Excluir</button></form></div>
+        </div></div></div>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" class="text-center text-muted py-5">Nenhuma despesa encontrada.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div></div>
+{% endblock %}

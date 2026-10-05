@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titulo %}{% if editando %}Editar{% else %}Nova{% endif %} despesa{% endblock %}
+{% block cabecalho %}{% if editando %}Editar despesa{% else %}Nova despesa{% endif %}{% endblock %}
+{% block conteudo %}
+<form method="post" class="cartao p-4" style="max-width: 640px">{% csrf_token %}
+  {% include "_form_campos.html" %}
+  <div class="d-flex gap-2">
+    <a href="{% url 'despesas:lista' %}" class="btn btn-light">Cancelar</a>
+    <button class="btn btn-primary">Salvar</button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+  // O campo "descreva a categoria" só aparece quando a categoria é "Outra".
+  (function () {
+    var categoria = document.getElementById("id_categoria");
+    var bloco = document.getElementById("id_categoria_outra").closest(".mb-3");
+    function atualizar() { bloco.hidden = categoria.value !== "OUTRA"; }
+    categoria.addEventListener("change", atualizar);
+    atualizar();
+  })();
+</script>
+{% endblock %}

@@ -1,4 +1,34 @@
 {% extends "base.html" %}
+{% load formatos %}
 {% block titulo %}Painel{% endblock %}
 {% block cabecalho %}Painel{% endblock %}
-{% block conteudo %}<p class="text-muted">Em construção.</p>{% endblock %}
+{% block descricao %}Resumo de {{ n.competencia|mes }}, por competência{% endblock %}
+{% block conteudo %}
+<div class="row g-3">
+  <div class="col-sm-6 col-xl-3"><div class="cartao p-3 h-100">
+    <div class="d-flex justify-content-between text-muted small">Total a receber <i class="bi bi-graph-up-arrow text-pendente"></i></div>
+    <div class="valor-grande mt-2">{{ n.a_receber|brl }}</div><div class="small text-muted">Em aberto de {{ n.competencia|mes }}</div>
+  </div></div>
+  <div class="col-sm-6 col-xl-3"><div class="cartao p-3 h-100">
+    <div class="d-flex justify-content-between text-muted small">Despesas do mês <i class="bi bi-graph-down-arrow text-atraso"></i></div>
+    <div class="valor-grande mt-2">{{ n.despesas|brl }}</div><div class="small text-muted">{{ n.competencia|mes }}</div>
+  </div></div>
+  <div class="col-sm-6 col-xl-3"><div class="cartao p-3 h-100">
+    <div class="d-flex justify-content-between text-muted small">Saldo do mês <i class="bi bi-wallet2 {% if n.saldo >= 0 %}text-pago{% else %}text-atraso{% endif %}"></i></div>
+    <div class="valor-grande mt-2 {% if n.saldo < 0 %}text-atraso{% endif %}">{{ n.saldo|brl }}</div><div class="small text-muted">Entradas de {{ n.entradas|brl }} (por competência)</div>
+  </div></div>
+  <div class="col-sm-6 col-xl-3"><div class="cartao p-3 h-100">
+    <div class="d-flex justify-content-between text-muted small">Contadores <i class="bi bi-people"></i></div>
+    <div class="mt-2"><span class="valor-grande">{{ n.associados_ativos }}</span> <span class="text-muted small">associados ativos</span></div>
+    <div><span class="valor-grande">{{ n.cobrancas_pendentes }}</span> <span class="text-muted small">cobranças em aberto do mês</span></div>
+  </div></div>
+  <div class="col-sm-6 col-xl-3"><div class="cartao p-3 h-100">
+    <div class="d-flex justify-content-between text-muted small">Em atraso <i class="bi bi-exclamation-circle text-atraso"></i></div>
+    <div class="valor-grande mt-2 text-atraso">{{ n.em_atraso|brl }}</div><div class="small text-muted">{{ n.qtd_em_atraso }} cobrança(s) com vencimento passado</div>
+  </div></div>
+</div>
+<div class="cartao p-4 mt-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+  <div><h2 class="h5 mb-1">Painel de Cobranças</h2><p class="text-muted small mb-0">Dar baixa em pagamentos pendentes do dia a dia.</p></div>
+  <a href="{% url 'cobrancas:lista' %}" class="btn btn-primary">Abrir painel <i class="bi bi-arrow-right"></i></a>
+</div>
+{% endblock %}

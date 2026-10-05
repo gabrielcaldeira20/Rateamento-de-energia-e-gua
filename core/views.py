@@ -5,11 +5,12 @@ from django.views import View
 
 from .forms import ConfiguracaoForm
 from .models import Configuracao
+from .services import numeros_painel
 
 
 class PainelView(LoginRequiredMixin, View):
     def get(self, request):
-        return render(request, "core/painel.html", {})
+        return render(request, "core/painel.html", {"n": numeros_painel()})
 
 
 class ConfiguracoesView(LoginRequiredMixin, View):
