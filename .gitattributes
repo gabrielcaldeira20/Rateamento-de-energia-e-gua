@@ -1,0 +1,4 @@
+# Fins de linha LF no repositório. O build.sh precisa de LF para rodar no Render (Linux).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
