@@ -1,6 +1,6 @@
 from django.urls import reverse
 
-# Itens do menu lateral. Os bloqueados são só visuais, como no protótipo.
+# Itens do menu lateral.
 MENU = [
     ("Painel", "core:painel", "bi-speedometer2"),
     ("Associados", "associados:lista", "bi-people"),
@@ -10,9 +10,6 @@ MENU = [
     ("Despesas", "despesas:lista", "bi-wallet2"),
     ("Relatório Financeiro", "relatorios:financeiro", "bi-bar-chart"),
     ("Configurações", "core:configuracoes", "bi-gear"),
-]
-MENU_BLOQUEADO = [
-    ("PIX automático", "bi-qr-code", "Completo"),
 ]
 
 
@@ -24,5 +21,4 @@ def menu(request):
         url = reverse(nome_url)
         ativo = request.path == url if url == "/" else request.path.startswith(url)
         itens.append({"rotulo": rotulo, "url": url, "icone": icone, "ativo": ativo})
-    bloqueados = [{"rotulo": r, "icone": i, "plano": p} for r, i, p in MENU_BLOQUEADO]
-    return {"menu_itens": itens, "menu_bloqueados": bloqueados}
+    return {"menu_itens": itens}

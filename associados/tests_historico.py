@@ -231,7 +231,7 @@ class TelasHistoricoTests(TestCase):
         self.assertEqual(len(self.client.get(url, {"de": "2026-01-01", "ate": "2026-12-31"}).context["registros"]), 1)
         self.assertEqual(len(self.client.get(url, {"de": "2026-02-31"}).context["registros"]), 2)  # data inválida é ignorada
         self.assertContains(resp, f'href="{url}"')
-        self.assertNotContains(resp, 'title="Disponível no plano Completo"><i class="bi bi-clock-history')
+        self.assertNotContains(resp, "Disponível no plano")
 
     def test_telas_exigem_login(self):
         r = HistoricoLigacao.objects.first()

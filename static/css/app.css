@@ -20,11 +20,10 @@ h1, h2, h3, .serif { font-family: Georgia, "Times New Roman", serif; }
   --bs-btn-hover-bg: var(--asv-verde); --bs-btn-hover-border-color: var(--asv-verde); }
 .text-primary { color: var(--asv-verde) !important; }
 .sidebar { width: 260px; min-height: 100vh; background: var(--asv-verde-escuro); color: #f3eee2; }
-.sidebar a, .sidebar .bloqueado { color: #f3eee2; text-decoration: none; display: flex; align-items: center;
+.sidebar a { color: #f3eee2; text-decoration: none; display: flex; align-items: center;
   gap: .6rem; padding: .5rem .75rem; border-radius: .4rem; font-size: .92rem; }
 .sidebar a:hover, .sidebar a.ativo { background: rgba(255,255,255,.12); }
 .sidebar a.ativo { font-weight: 600; }
-.sidebar .bloqueado { opacity: .5; cursor: not-allowed; }
 .cartao { background: #fff; border: 1px solid #e3dccd; border-radius: .75rem; }
 .valor-grande { font-family: Georgia, serif; font-size: 1.6rem; font-weight: 600; }
 .text-pago { color: var(--asv-pago) !important; }

@@ -65,9 +65,16 @@ class LoginTests(TestCase):
         self.assertEqual(Configuracao.atual().chave_pix, "pix@asv.org")
         self.assertEqual(Configuracao.atual().taxa_disponibilidade, Decimal("6.00"))
 
-    def test_menu_mostra_itens_bloqueados_sem_perfis(self):
+    def test_menu_e_configuracoes_sem_itens_bloqueados(self):
         self.client.force_login(self.user)
-        resp = self.client.get(reverse("core:painel"))
-        self.assertContains(resp, "PIX automático")
-        self.assertContains(resp, "Histórico de ligações")
-        self.assertNotContains(resp, "Perfis de usuário")
+        for url in (reverse("core:painel"), reverse("core:configuracoes")):
+            resp = self.client.get(url)
+            self.assertContains(resp, "Histórico de ligações")
+            self.assertNotContains(resp, "Perfis de usuário")
+            # Nenhuma tela mostra item bloqueado, cadeado ou indicação de plano.
+            self.assertNotContains(resp, "bi-lock")
+            self.assertNotContains(resp, 'class="bloqueado"')
+            self.assertNotContains(resp, "Disponível no plano")
+            self.assertNotContains(resp, "bi-qr-code")
+        # A chave PIX da Configuração continua no formulário.
+        self.assertContains(resp, 'name="chave_pix"')
