@@ -5,6 +5,7 @@
 {% block descricao %}{{ a.endereco }}{% endblock %}
 {% block acoes %}
   <a href="{% url 'associados:lista' %}" class="btn btn-light">Voltar</a>
+  <a href="{% url 'associados:historico' a.pk %}" class="btn btn-outline-secondary"><i class="bi bi-clock-history me-1"></i>Histórico de ligações</a>
   {% if a.ativo %}<a href="{% url 'associados:editar' a.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i>Editar</a>{% endif %}
 {% endblock %}
 {% block conteudo %}

@@ -91,7 +91,7 @@ class Passo2View(LoginRequiredMixin, View):
         if not conta:
             return redirect("energia:passo1")
         linhas = []
-        for associado in elegiveis_energia(conta["rede"]):
+        for associado in elegiveis_energia(conta["rede"], conta["competencia"]):
             linhas.append({
                 "associado": associado,
                 "anterior": services.leitura_anterior(associado, conta["rede"]),
@@ -109,7 +109,7 @@ class Passo2View(LoginRequiredMixin, View):
         if not conta:
             return redirect("energia:passo1")
         leituras = {}
-        for associado in elegiveis_energia(conta["rede"]):
+        for associado in elegiveis_energia(conta["rede"], conta["competencia"]):
             leituras[associado.pk] = ler_inteiro(request.POST.get(f"leitura_{associado.pk}"))
         gravar_sessao(request, conta, leituras)
         return redirect("energia:passo3")

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titulo %}Histórico de ligações{% endblock %}
+{% block cabecalho %}Histórico de ligações{% endblock %}
+{% block descricao %}{{ registros|length }} registro(s){% endblock %}
+{% block conteudo %}
+<form method="get" class="cartao p-3 mb-3 row g-2 align-items-end">
+  <div class="col-md-3"><label class="form-label small mb-1" for="f-associado">Associado</label>
+    <select name="associado" id="f-associado" class="form-select">
+      <option value="">Todos</option>
+      {% for a in associados %}<option value="{{ a.pk }}" {% if filtros.associado == a.pk|stringformat:"s" %}selected{% endif %}>{{ a.nome }}</option>{% endfor %}
+    </select></div>
+  <div class="col-md-3"><label class="form-label small mb-1" for="f-tipo">Serviço</label>
+    <select name="tipo" id="f-tipo" class="form-select">
+      <option value="todos">Todos</option>
+      {% for valor, rotulo in tipos %}<option value="{{ valor }}" {% if filtros.tipo == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+    </select></div>
+  <div class="col-md-2"><label class="form-label small mb-1" for="f-de">De</label><input type="date" name="de" id="f-de" value="{{ filtros.de }}" class="form-control"></div>
+  <div class="col-md-2"><label class="form-label small mb-1" for="f-ate">Até</label><input type="date" name="ate" id="f-ate" value="{{ filtros.ate }}" class="form-control"></div>
+  <div class="col-md-2"><button class="btn btn-outline-primary w-100"><i class="bi bi-funnel me-1"></i>Filtrar</button></div>
+</form>
+<div class="cartao overflow-hidden"><div class="table-responsive">
+<table class="table align-middle mb-0">
+  <thead class="table-light small text-uppercase"><tr><th>Data</th><th>Associado</th><th>Serviço</th><th>Novo estado</th><th>Observação</th><th class="text-end">Ações</th></tr></thead>
+  <tbody>
+  {% for r in registros %}
+    <tr>
+      <td>{{ r.data|date:"d/m/Y" }}</td>
+      <td class="fw-medium"><a href="{% url 'associados:historico' r.associado_id %}" class="text-reset">{{ r.associado.nome }}</a></td>
+      <td>{{ r.get_tipo_display }}</td>
+      <td><span class="badge rounded-pill {% if r.ligado %}badge-paga{% else %}text-bg-light{% endif %}">{% if r.ligado %}Ligado{% else %}Desligado{% endif %}</span></td>
+      <td class="text-muted small">{{ r.observacao }}</td>
+      <td class="text-end"><a href="{% url 'historico:editar' r.pk %}" class="btn btn-sm btn-light" title="Editar"><i class="bi bi-pencil"></i></a>
+        <a href="{% url 'associados:historico' r.associado_id %}" class="btn btn-sm btn-light" title="Linha do tempo do associado"><i class="bi bi-clock-history"></i></a></td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" class="text-center text-muted py-5">Nenhum registro encontrado.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div></div>
+{% endblock %}

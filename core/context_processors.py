@@ -4,6 +4,7 @@ from django.urls import reverse
 MENU = [
     ("Painel", "core:painel", "bi-speedometer2"),
     ("Associados", "associados:lista", "bi-people"),
+    ("Histórico de ligações", "historico:lista", "bi-clock-history"),
     ("Lançamento de Energia", "energia:passo1", "bi-lightning-charge"),
     ("Cobranças", "cobrancas:lista", "bi-receipt"),
     ("Despesas", "despesas:lista", "bi-wallet2"),
@@ -12,7 +13,6 @@ MENU = [
 ]
 MENU_BLOQUEADO = [
     ("PIX automático", "bi-qr-code", "Completo"),
-    ("Histórico de ligações", "bi-clock-history", "Completo"),
 ]
 
 

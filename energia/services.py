@@ -133,7 +133,7 @@ def calcular_rateio(rede, competencia, valor_total, kwh_total, leituras, config=
     fator = calcular_fator(valor_total, kwh_total)
     rateio = Rateio(rede, competencia, valor_total, int(kwh_total), fator)
 
-    for associado in elegiveis_energia(rede):
+    for associado in elegiveis_energia(rede, competencia):
         anterior = leitura_anterior(associado, rede)
         atual = leituras.get(associado.pk)
         linha = LinhaRateio(associado, anterior, atual)

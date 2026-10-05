@@ -10,6 +10,7 @@ from django.db import transaction
 from django.db.models import F, Sum
 
 from associados.models import Associado
+from associados.services import situacao_na_competencia
 from core.models import Configuracao
 from core.utils import formatar_brl, hoje, mes_label
 
@@ -33,7 +34,7 @@ class ResultadoGeracao:
 
 @transaction.atomic
 def gerar_mensais(competencia, config=None):
-    """Cria mensalidade e, se a água estiver ligada, água para cada associado ativo.
+    """Cria mensalidade e, se a água estava ligada na competência (histórico), água para cada associado ativo.
 
     Rodar duas vezes não duplica: o que já existe é contado em "existentes".
     Como no protótipo, não se cria cobrança de valor zero.
@@ -45,7 +46,7 @@ def gerar_mensais(competencia, config=None):
         itens = []
         if associado.valor_mensalidade > 0:
             itens.append((TipoCobranca.MENSALIDADE, associado.valor_mensalidade))
-        if associado.agua_ligada and config.valor_agua > 0:
+        if config.valor_agua > 0 and situacao_na_competencia(associado, "AGUA", competencia):
             itens.append((TipoCobranca.AGUA, config.valor_agua))
         for tipo, valor in itens:
             _, criada = Cobranca.objects.get_or_create(

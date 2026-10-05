@@ -11,4 +11,5 @@ urlpatterns = [
     path("<int:pk>/editar/", views.FormularioView.as_view(), name="editar"),
     path("<int:pk>/inativar/", views.AtivoView.as_view(ativo=False), name="inativar"),
     path("<int:pk>/reativar/", views.AtivoView.as_view(ativo=True), name="reativar"),
+    path("<int:pk>/historico/", views.HistoricoAssociadoView.as_view(), name="historico"),
 ]

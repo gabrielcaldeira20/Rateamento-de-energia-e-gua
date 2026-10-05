@@ -25,6 +25,8 @@
       {% include "associados/_campo.html" with campo=form.leitura_inicial_poco %}
     </div>
     {% include "associados/_campo.html" with campo=form.agua_ligada %}
+    {% include "associados/_campo.html" with campo=form.data_mudanca %}
+    {% if editando %}<p class="small text-muted mb-0">Para corrigir datas antigas, use o <a href="{% url 'associados:historico' editando %}">histórico de ligações</a>.</p>{% endif %}
   </div>
   <div class="d-flex gap-2">
     <a href="{% url 'associados:lista' %}" class="btn btn-light">Cancelar</a>

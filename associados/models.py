@@ -49,3 +49,44 @@ class Associado(models.Model):
 
     def leitura_inicial(self, rede):
         return self.leitura_inicial_sede if rede == "SEDE" else self.leitura_inicial_poco
+
+
+class TipoLigacao(models.TextChoices):
+    SEDE = "SEDE", "Rede da Sede"
+    POCO = "POCO", "Rede do Poço"
+    AGUA = "AGUA", "Água"
+
+
+# Campo do Associado que reflete cada tipo de ligação.
+CAMPO_DO_TIPO = {
+    TipoLigacao.SEDE: "rede_sede",
+    TipoLigacao.POCO: "rede_poco",
+    TipoLigacao.AGUA: "agua_ligada",
+}
+
+
+class HistoricoLigacao(models.Model):
+    """Mudança de estado de um serviço do associado em uma data.
+
+    Os campos rede_sede, rede_poco e agua_ligada do Associado refletem o registro
+    mais recente por data de cada tipo.
+    """
+
+    associado = models.ForeignKey(Associado, on_delete=models.CASCADE, related_name="historico_ligacoes")
+    tipo = models.CharField(max_length=4, choices=TipoLigacao.choices)
+    ligado = models.BooleanField(help_text="Novo estado a partir desta data.")
+    data = models.DateField()
+    observacao = models.CharField("observação", max_length=200, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-data", "tipo", "-pk"]
+        verbose_name = "histórico de ligação"
+        verbose_name_plural = "histórico de ligações"
+        constraints = [
+            models.UniqueConstraint(fields=["associado", "tipo", "data"], name="historico_unico_por_dia"),
+        ]
+
+    def __str__(self):
+        estado = "ligado" if self.ligado else "desligado"
+        return f"{self.associado} — {self.get_tipo_display()} {estado} em {self.data:%d/%m/%Y}"

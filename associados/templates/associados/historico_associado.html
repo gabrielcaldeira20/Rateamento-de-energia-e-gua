@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block titulo %}Histórico de ligações — {{ a.nome }}{% endblock %}
+{% block cabecalho %}Histórico de ligações{% endblock %}
+{% block descricao %}{{ a.nome }}{% endblock %}
+{% block acoes %}
+  <a href="{% url 'associados:detalhe' a.pk %}" class="btn btn-light">Voltar ao associado</a>
+{% endblock %}
+{% block conteudo %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="cartao p-4 mb-4">
+      <h2 class="h6 text-uppercase text-muted mb-3">Estado atual</h2>
+      <dl class="row small mb-0">
+        <dt class="col-7 text-muted fw-normal">Rede da Sede</dt><dd class="col-5 text-end">{% if a.rede_sede %}<span class="text-pago">Ligada</span>{% else %}Desligada{% endif %}</dd>
+        <dt class="col-7 text-muted fw-normal">Rede do Poço</dt><dd class="col-5 text-end">{% if a.rede_poco %}<span class="text-pago">Ligada</span>{% else %}Desligada{% endif %}</dd>
+        <dt class="col-7 text-muted fw-normal">Água</dt><dd class="col-5 text-end mb-0">{% if a.agua_ligada %}<span class="text-pago">Ligada</span>{% else %}Desligada{% endif %}</dd>
+      </dl>
+      <p class="small text-muted mt-3 mb-0">O estado atual é sempre o registro mais recente por data de cada serviço.</p>
+    </div>
+    <form method="post" class="cartao p-4">{% csrf_token %}
+      <h2 class="h6 text-uppercase text-muted mb-3">Novo registro</h2>
+      <p class="small text-muted">Aceita datas passadas. Se já houver registro do mesmo serviço na data, ele é atualizado.</p>
+      {% include "_form_campos.html" %}
+      <button class="btn btn-primary">Salvar registro</button>
+    </form>
+  </div>
+  <div class="col-lg-8">
+    <div class="cartao p-4">
+      <h2 class="h6 text-uppercase text-muted mb-3">Linha do tempo</h2>
+      {% if registros %}
+      <ul class="list-unstyled mb-0">
+        {% for r in registros %}
+        <li class="d-flex gap-3 align-items-start border-start border-3 ps-3 pb-3 {% if r.ligado %}border-success{% else %}border-secondary{% endif %}">
+          <div class="flex-grow-1">
+            <div class="fw-medium">{{ r.data|date:"d/m/Y" }} · {{ r.get_tipo_display }} <span class="badge rounded-pill {% if r.ligado %}badge-paga{% else %}text-bg-light{% endif %}">{% if r.ligado %}Ligado{% else %}Desligado{% endif %}</span></div>
+            {% if r.observacao %}<div class="small text-muted">{{ r.observacao }}</div>{% endif %}
+          </div>
+          <div class="text-nowrap">
+            <a href="{% url 'historico:editar' r.pk %}" class="btn btn-sm btn-light" title="Editar"><i class="bi bi-pencil"></i></a>
+            <button type="button" class="btn btn-sm btn-light" title="Excluir" data-bs-toggle="modal" data-bs-target="#excluir-{{ r.pk }}"><i class="bi bi-trash text-atraso"></i></button>
+            <div class="modal fade" id="excluir-{{ r.pk }}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+              <div class="modal-header"><h2 class="modal-title h5">Excluir registro</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+              <div class="modal-body text-wrap">Excluir o registro de {{ r.get_tipo_display }} {% if r.ligado %}ligado{% else %}desligado{% endif %} em {{ r.data|date:"d/m/Y" }}? O estado atual será recalculado. Fechamentos e cobranças já criados não mudam.</div>
+              <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <form method="post" action="{% url 'historico:excluir' r.pk %}">{% csrf_token %}<button class="btn btn-danger">Excluir</button></form></div>
+            </div></div></div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted mb-0">Nenhum registro. Sem registro, o serviço conta como desligado.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titulo %}Editar registro de ligação{% endblock %}
+{% block cabecalho %}Editar registro de ligação{% endblock %}
+{% block descricao %}{{ registro.associado.nome }}{% endblock %}
+{% block conteudo %}
+<form method="post" class="cartao p-4" style="max-width: 560px">{% csrf_token %}
+  {% include "_form_campos.html" %}
+  <p class="small text-muted">O estado atual do associado será recalculado. Fechamentos e cobranças já criados não mudam.</p>
+  <div class="d-flex gap-2">
+    <a href="{% url 'associados:historico' registro.associado_id %}" class="btn btn-light">Cancelar</a>
+    <button class="btn btn-primary">Salvar</button>
+  </div>
+</form>
+{% endblock %}

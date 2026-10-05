@@ -1,7 +1,7 @@
 # Status da construção
 
 Só fica marcado como pronto o que tem teste automatizado passando.
-Para rodar os testes: `DEBUG=True python manage.py test` (73 testes, todos passando).
+Para rodar os testes: `DEBUG=True python manage.py test` (95 testes, todos passando).
 
 | Fase | Item | Status | Testes |
 |---|---|---|---|
@@ -14,6 +14,9 @@ Para rodar os testes: `DEBUG=True python manage.py test` (73 testes, todos passa
 | 7 | Relatório financeiro | [x] pronto | relatorios/tests.py |
 | 8 | Entrega: requirements, build.sh, .env.example, README do Render | [x] pronto | core/tests_entrega.py |
 | 8 | Comandos exportar_dados e importar_planilhas | [x] pronto | core/tests_entrega.py |
+| 9 | Histórico de ligações: modelo, migração com carga, situacao_em, formulário | [x] pronto | associados/tests_historico.py |
+| 9 | Histórico de ligações: telas e item de menu | [x] pronto | associados/tests_historico.py (TelasHistoricoTests) |
+| 9 | Histórico de ligações no rateio e na geração mensal | [x] pronto | associados/tests_historico.py (UsoNoRateioENaGeracaoTests) |
 
 ## Testes obrigatórios
 
