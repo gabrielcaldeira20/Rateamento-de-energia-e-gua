@@ -1,4 +1,9 @@
 from django.urls import path
-from core.views import PainelView
+
+from . import views
+
 app_name = "relatorios"
-urlpatterns = [path("financeiro/", PainelView.as_view(), name="financeiro")]
+
+urlpatterns = [
+    path("financeiro/", views.FinanceiroView.as_view(), name="financeiro"),
+]

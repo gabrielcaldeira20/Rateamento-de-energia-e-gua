@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load formatos %}
+{% block titulo %}Relatório Financeiro{% endblock %}
+{% block cabecalho %}Relatório Financeiro{% endblock %}
+{% block descricao %}{{ inicio|mes }} a {{ fim|mes }} · {% if modo == "competencia" %}por mês de competência{% else %}por data de pagamento{% endif %}{% endblock %}
+{% block acoes %}
+  <span class="d-inline-block" tabindex="0" title="Disponível no plano Avançado">
+    <button type="button" class="btn btn-outline-secondary" disabled><i class="bi bi-download me-1"></i>Exportar <i class="bi bi-lock ms-1"></i></button>
+  </span>
+{% endblock %}
+{% block conteudo %}
+<form method="get" class="cartao p-3 mb-4" id="filtros">
+  <div class="d-flex flex-wrap gap-3 align-items-end">
+    <div class="btn-group" role="group" aria-label="Modo do relatório">
+      {% for valor, rotulo in modos %}
+        <input type="radio" class="btn-check" name="modo" id="modo-{{ valor }}" value="{{ valor }}" {% if modo == valor %}checked{% endif %} onchange="this.form.submit()">
+        <label class="btn btn-outline-primary" for="modo-{{ valor }}">{{ rotulo }}</label>
+      {% endfor %}
+    </div>
+    <div class="btn-group flex-wrap" role="group" aria-label="Período">
+      {% for valor, rotulo in periodos %}
+        <input type="radio" class="btn-check" name="periodo" id="periodo-{{ valor }}" value="{{ valor }}" {% if preset == valor %}checked{% endif %} {% if valor != "custom" %}onchange="this.form.submit()"{% endif %}>
+        <label class="btn btn-outline-secondary" for="periodo-{{ valor }}">{{ rotulo }}</label>
+      {% endfor %}
+    </div>
+    <div class="d-flex gap-2 align-items-end" id="personalizado" {% if preset != "custom" %}hidden{% endif %}>
+      <div><label class="form-label small mb-1" for="inicio">De</label><input type="month" name="inicio" id="inicio" value="{{ inicio_iso }}" class="form-control"></div>
+      <div><label class="form-label small mb-1" for="fim">Até</label><input type="month" name="fim" id="fim" value="{{ fim_iso }}" class="form-control"></div>
+      <button class="btn btn-primary">Aplicar</button>
+    </div>
+  </div>
+</form>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3"><div class="cartao p-3 h-100"><div class="small text-muted">Total de entradas</div><div class="valor-grande text-pago">{{ resumo.entradas|brl }}</div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="cartao p-3 h-100"><div class="small text-muted">Total de despesas</div><div class="valor-grande text-atraso">{{ resumo.despesas|brl }}</div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="cartao p-3 h-100"><div class="small text-muted">Saldo do período</div><div class="valor-grande {% if resumo.saldo < 0 %}text-atraso{% else %}text-pago{% endif %}">{{ resumo.saldo|brl }}</div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="cartao p-3 h-100"><div class="small text-muted">Taxa de disponibilidade</div><div class="valor-grande">{{ resumo.disponibilidade|brl }}</div><div class="small text-muted">lançada nas cobranças de energia do período</div></div></div>
+</div>
+
+<div class="cartao p-3 mb-4">
+  <h2 class="h6 text-muted text-uppercase mb-3">Entradas x despesas por mês</h2>
+  <div style="position: relative; height: 320px"><canvas id="grafico" aria-label="Gráfico de barras de entradas e despesas por mês" role="img"></canvas></div>
+</div>
+
+<div class="cartao p-3">
+  <ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#aba-entradas" type="button" role="tab">Entradas ({{ entradas|length }})</button></li>
+    <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-despesas" type="button" role="tab">Despesas ({{ despesas|length }})</button></li>
+    <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-disp" type="button" role="tab">Disponibilidade ({{ disponibilidades|length }})</button></li>
+  </ul>
+  <div class="tab-content pt-3">
+    <div class="tab-pane fade show active" id="aba-entradas" role="tabpanel"><div class="table-responsive" style="max-height: 420px">
+      <table class="table table-sm small align-middle mb-0">
+        <thead class="text-muted"><tr><th>Data</th><th>Associado</th><th>Tipo</th><th>Competência</th><th class="text-end">Valor</th></tr></thead>
+        <tbody>{% for p in entradas %}<tr><td>{{ p.data|date:"d/m/Y" }}</td><td>{{ p.cobranca.associado.nome }}</td><td>{{ p.cobranca.rotulo_tipo }}</td><td>{{ p.cobranca.competencia|mes }}</td><td class="text-end">{{ p.valor|brl }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="text-muted">Nenhuma entrada no período.</td></tr>{% endfor %}</tbody>
+        <tfoot><tr class="fw-semibold"><td colspan="4">Subtotal</td><td class="text-end">{{ resumo.entradas|brl }}</td></tr></tfoot>
+      </table></div></div>
+    <div class="tab-pane fade" id="aba-despesas" role="tabpanel"><div class="table-responsive" style="max-height: 420px">
+      <table class="table table-sm small align-middle mb-0">
+        <thead class="text-muted"><tr><th>Data</th><th>Competência</th><th>Categoria</th><th>Descrição</th><th class="text-end">Valor</th></tr></thead>
+        <tbody>{% for d in despesas %}<tr><td>{{ d.data|date:"d/m/Y" }}</td><td>{{ d.competencia|mes }}</td><td>{{ d.rotulo_categoria }}</td><td>{{ d.descricao }}</td><td class="text-end">{{ d.valor|brl }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="text-muted">Nenhuma despesa no período.</td></tr>{% endfor %}</tbody>
+        <tfoot><tr class="fw-semibold"><td colspan="4">Subtotal</td><td class="text-end">{{ resumo.despesas|brl }}</td></tr></tfoot>
+      </table></div></div>
+    <div class="tab-pane fade" id="aba-disp" role="tabpanel"><div class="table-responsive" style="max-height: 420px">
+      <table class="table table-sm small align-middle mb-0">
+        <thead class="text-muted"><tr><th>Competência</th><th>Associado</th><th>Rede</th><th>Status da cobrança</th><th class="text-end">Taxa</th></tr></thead>
+        <tbody>{% for c in disponibilidades %}<tr><td>{{ c.competencia|mes }}</td><td>{{ c.associado.nome }}</td><td>{{ c.get_rede_display }}</td><td>{{ c.get_status_display }}</td><td class="text-end">{{ c.valor_disponibilidade|brl }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="text-muted">Nenhuma taxa no período.</td></tr>{% endfor %}</tbody>
+        <tfoot><tr class="fw-semibold"><td colspan="4">Subtotal</td><td class="text-end">{{ resumo.disponibilidade|brl }}</td></tr></tfoot>
+      </table></div></div>
+  </div>
+</div>
+{{ grafico|json_script:"dados-grafico" }}
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  (function () {
+    var custom = document.getElementById("periodo-custom");
+    document.querySelectorAll("input[name=periodo]").forEach(function (r) {
+      r.addEventListener("change", function () { document.getElementById("personalizado").hidden = !custom.checked; });
+    });
+    var dados = JSON.parse(document.getElementById("dados-grafico").textContent);
+    var brl = function (v) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); };
+    new Chart(document.getElementById("grafico"), {
+      type: "bar",
+      data: {
+        labels: dados.rotulos,
+        datasets: [
+          { label: "Entradas", data: dados.entradas, backgroundColor: "#4C9A55", borderRadius: 4 },
+          { label: "Despesas", data: dados.despesas, backgroundColor: "#B3492F", borderRadius: 4 }
+        ]
+      },
+      options: {
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, ticks: { callback: brl } } },
+        plugins: { tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + brl(c.parsed.y); } } } }
+      }
+    });
+  })();
+</script>
+{% endblock %}

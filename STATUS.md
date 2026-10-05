@@ -11,5 +11,5 @@ Para rodar os testes: `DEBUG=True python manage.py test`.
 | 4 | Cobranças: geração mensal, pagamentos, parcial, crédito, baixa em lote | [x] pronto | cobrancas/tests.py |
 | 5 | Despesas e painel inicial | [x] pronto | despesas/tests.py |
 | 6 | Lembrete pelo WhatsApp | [x] pronto | cobrancas/tests.py (WhatsAppTests) |
-| 7 | Relatório financeiro | [ ] | |
+| 7 | Relatório financeiro | [x] pronto | relatorios/tests.py |
 | 8 | Entrega: requirements, build.sh, .env.example, README do Render | [ ] | |
