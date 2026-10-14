@@ -91,6 +91,8 @@ DATABASES = {
     "default": dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=600,
+        # SSL só no PostgreSQL de produção; o SQLite local não aceita sslmode.
+        ssl_require=not DEBUG and bool(os.environ.get("DATABASE_URL")),
     )
 }
 
@@ -106,7 +108,7 @@ TIME_ZONE = "America/Sao_Paulo"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STORAGES = {
