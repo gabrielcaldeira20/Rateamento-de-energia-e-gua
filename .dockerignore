@@ -1,0 +1,16 @@
+# O que NAO entra na imagem Docker. Sem isto, o "COPY . ." levaria o .env
+# (com as senhas), o banco SQLite local e o .venv do Windows para dentro da imagem.
+.git/
+.venv/
+.env
+.claude/
+__pycache__/
+*.pyc
+*.sqlite3
+staticfiles/
+backups/
+*.sql
+*.sql.gz
+*.csv
+!modelo-associados.csv
+!docs/*.csv

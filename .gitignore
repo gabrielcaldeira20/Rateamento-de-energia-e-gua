@@ -9,3 +9,11 @@ staticfiles/
 
 *.sqlite3
 .claude/
+
+# Dumps do banco e planilhas com dados reais dos associados.
+backups/
+*.sql
+*.sql.gz
+*.csv
+!modelo-associados.csv
+!docs/*.csv

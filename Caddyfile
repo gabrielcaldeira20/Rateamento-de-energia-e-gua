@@ -1,0 +1,33 @@
+# O Caddy emite e renova o certificado HTTPS sozinho, pela Let's Encrypt.
+# Tambem redireciona http para https automaticamente.
+
+{
+    email {$ACME_EMAIL}
+}
+
+{$DOMINIO} {
+    encode zstd gzip
+
+    # Arquivos estaticos (CSS, JS) servidos direto pelo Caddy, sem passar pelo Django.
+    handle_path /static/* {
+        root * /srv/static
+        file_server
+    }
+
+    reverse_proxy web:8000
+
+    # Cabecalhos de seguranca basicos.
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "same-origin"
+        -Server
+    }
+
+    log {
+        output file /data/acesso.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+    }
+}

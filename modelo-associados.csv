@@ -1,0 +1,4 @@
+nome,endereco,telefone,sede,poco,leitura_sede,leitura_poco,isento_disponibilidade,ativo,observacao
+Joao da Silva,Rua A 100,38999990001,sim,sim,1520,840,nao,sim,
+Maria Souza,Rua B 25,38999990002,sim,nao,980,,nao,sim,medidor trocado em 2025
+Associacao Alfa Serra Velha,Sede da associacao,38999990003,sim,sim,4310,2200,sim,sim,

@@ -92,7 +92,8 @@ DATABASES = {
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=600,
         # SSL só no PostgreSQL de produção; o SQLite local não aceita sslmode.
-        ssl_require=not DEBUG and bool(os.environ.get("DATABASE_URL")),
+        # No VPS o banco fica na rede interna do Docker, sem SSL: lá DATABASE_SSL_REQUIRE=False.
+        ssl_require=env_bool("DATABASE_SSL_REQUIRE", not DEBUG and bool(os.environ.get("DATABASE_URL"))),
     )
 }
 
