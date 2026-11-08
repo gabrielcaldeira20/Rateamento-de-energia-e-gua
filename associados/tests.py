@@ -25,10 +25,33 @@ class FormularioTests(TestCase):
         form = AssociadoForm(data=dados_form(rede_sede="on", padrao_ligado_sede="on", leitura_inicial_sede="1200"))
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test_contato_obrigatorio(self):
+    def test_contato_opcional(self):
         form = AssociadoForm(data=dados_form(contato=""))
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.save().contato, "")
+
+    def test_cpf_cnpj_vazio_vira_nulo_e_nao_colide(self):
+        for nome in ("Ana", "Bia"):
+            form = AssociadoForm(data=dados_form(nome=nome, cpf_cnpj=""))
+            self.assertTrue(form.is_valid(), form.errors)
+            self.assertIsNone(form.save().cpf_cnpj)
+        Associado.objects.create(nome="Caio", cpf_cnpj="")  # fora do formulário, o save também converte
+        self.assertEqual(Associado.objects.filter(cpf_cnpj__isnull=True).count(), 3)
+
+    def test_cpf_cnpj_repetido_e_recusado(self):
+        primeiro = AssociadoForm(data=dados_form(cpf_cnpj="529.982.247-25"))
+        self.assertTrue(primeiro.is_valid(), primeiro.errors)
+        primeiro.save()
+        form = AssociadoForm(data=dados_form(nome="Outro", cpf_cnpj="529.982.247-25"))
         self.assertFalse(form.is_valid())
-        self.assertIn("contato", form.errors)
+        self.assertIn("cpf_cnpj", form.errors)
+
+    def test_lista_marca_quem_esta_sem_telefone(self):
+        from django.contrib.auth.models import User
+        self.client.force_login(User.objects.create_user("op", password="x"))
+        fabrica.associado("Sem Fone", contato="")
+        resposta = self.client.get(reverse("associados:lista"))
+        self.assertContains(resposta, "sem telefone")
 
     def test_sem_rede_desliga_padrao(self):
         form = AssociadoForm(data=dados_form(padrao_ligado_poco="on"))

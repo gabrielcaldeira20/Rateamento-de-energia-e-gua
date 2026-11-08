@@ -33,7 +33,7 @@
       <td class="fw-medium"><a href="{% url 'associados:detalhe' a.pk %}" class="text-reset">{{ a.nome }}</a>
         {% if not a.ativo %}<span class="badge text-bg-light ms-1">Inativo</span>{% endif %}
         {% if a.e_associacao %}<span class="badge text-bg-light ms-1">Associação</span>{% endif %}</td>
-      <td class="text-muted">{{ a.contato|default:"sem contato" }}</td>
+      <td class="text-muted">{% if a.contato %}{{ a.contato }}{% else %}<span class="badge text-bg-warning" title="Sem telefone: não recebe lembrete pelo WhatsApp. Avise de outro jeito."><i class="bi bi-telephone-x me-1"></i>sem telefone</span>{% endif %}</td>
       <td>
         {% if a.rede_sede %}<span class="badge rounded-pill text-bg-light">Sede{% if not a.padrao_ligado_sede %} (sem padrão){% endif %}</span>{% endif %}
         {% if a.rede_poco %}<span class="badge rounded-pill text-bg-light">Poço{% if not a.padrao_ligado_poco %} (sem padrão){% endif %}</span>{% endif %}

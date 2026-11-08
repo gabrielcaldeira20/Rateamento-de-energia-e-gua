@@ -13,7 +13,8 @@
   <div class="col-lg-5">
     <div class="cartao p-4">
       <dl class="row mb-0 small">
-        <dt class="col-6 text-muted fw-normal">Contato/WhatsApp</dt><dd class="col-6 text-end">{{ a.contato|default:"—" }}</dd>
+        <dt class="col-6 text-muted fw-normal">Contato/WhatsApp</dt><dd class="col-6 text-end">{% if a.contato %}{{ a.contato }}{% else %}<span class="badge text-bg-warning" title="Não recebe lembrete pelo WhatsApp. Avise de outro jeito."><i class="bi bi-telephone-x me-1"></i>sem telefone</span>{% endif %}</dd>
+        <dt class="col-6 text-muted fw-normal">CPF/CNPJ</dt><dd class="col-6 text-end">{{ a.cpf_cnpj|default:"—" }}</dd>
         <dt class="col-6 text-muted fw-normal">Rede da Sede</dt><dd class="col-6 text-end">{% if a.rede_sede %}Sim, {% if a.padrao_ligado_sede %}padrão ligado{% else %}sem padrão{% endif %}{% else %}Não{% endif %}</dd>
         <dt class="col-6 text-muted fw-normal">Rede do Poço</dt><dd class="col-6 text-end">{% if a.rede_poco %}Sim, {% if a.padrao_ligado_poco %}padrão ligado{% else %}sem padrão{% endif %}{% else %}Não{% endif %}</dd>
         <dt class="col-6 text-muted fw-normal">Água</dt><dd class="col-6 text-end">{% if a.agua_ligada %}Ligada{% else %}Desligada{% endif %}</dd>

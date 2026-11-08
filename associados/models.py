@@ -8,7 +8,14 @@ class Associado(models.Model):
     """Cadastro do associado. Guarda só o estado atual, sem histórico por data."""
 
     nome = models.CharField(max_length=150)
-    contato = models.CharField("contato/WhatsApp", max_length=40)
+    cpf_cnpj = models.CharField(
+        "CPF/CNPJ", max_length=18, null=True, blank=True, unique=True,
+        help_text="Opcional. Vazio é gravado como nulo, para não colidir na restrição de único.",
+    )
+    contato = models.CharField(
+        "contato/WhatsApp", max_length=40, blank=True,
+        help_text="Opcional. Sem telefone, o associado não recebe lembrete pelo WhatsApp.",
+    )
     endereco = models.CharField("endereço", max_length=200, blank=True)
     ativo = models.BooleanField(default=True)
     e_associacao = models.BooleanField(
@@ -46,6 +53,12 @@ class Associado(models.Model):
 
     def __str__(self):
         return self.nome
+
+    def save(self, *args, **kwargs):
+        # String vazia colidiria na restrição unique; documento ausente é sempre nulo.
+        if not (self.cpf_cnpj or "").strip():
+            self.cpf_cnpj = None
+        super().save(*args, **kwargs)
 
     def leitura_inicial(self, rede):
         return self.leitura_inicial_sede if rede == "SEDE" else self.leitura_inicial_poco
