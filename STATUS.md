@@ -1,7 +1,7 @@
 # Status da construção
 
 Só fica marcado como pronto o que tem teste automatizado passando.
-Para rodar os testes: `DEBUG=True python manage.py test` (128 testes, todos passando).
+Para rodar os testes: `DEBUG=True python manage.py test` (126 testes, todos passando).
 
 | Fase | Item | Status | Testes |
 |---|---|---|---|
@@ -13,7 +13,8 @@ Para rodar os testes: `DEBUG=True python manage.py test` (128 testes, todos pass
 | 6 | Lembrete pelo WhatsApp | [x] pronto | cobrancas/tests.py (WhatsAppTests) |
 | 7 | Relatório financeiro | [x] pronto | relatorios/tests.py |
 | 8 | Entrega: requirements, .env.example, README | [x] pronto | core/tests_entrega.py |
-| 8 | Comandos exportar_dados e importar_planilhas | [x] pronto | core/tests_entrega.py |
+| 8 | Comando exportar_dados | [x] pronto | core/tests_entrega.py |
+| 8 | Comando importar_planilhas | substituído pelo importar_associados (fase 11) e removido em 11/11/2026: deduplicava só pelo nome, usava a data do dia como início no histórico e ignorava em silêncio quem já existia | — |
 | 9 | Histórico de ligações: modelo, migração com carga, situacao_em, formulário | [x] pronto | associados/tests_historico.py |
 | 9 | Histórico de ligações: telas e item de menu | [x] pronto | associados/tests_historico.py (TelasHistoricoTests) |
 | 9 | Histórico de ligações no rateio e na geração mensal | [x] pronto | associados/tests_historico.py (UsoNoRateioENaGeracaoTests) |
@@ -76,7 +77,8 @@ Para rodar os testes: `DEBUG=True python manage.py test` (128 testes, todos pass
 22. O padrão ligado não tem histórico. No rateio de uma competência, ele só é exigido de quem continua com a rede hoje.
     Quem desligou a rede depois da competência entra pelo histórico. Associados inativos continuam fora do rateio.
 23. No admin, rede da Sede, rede do Poço e água ficam somente leitura, porque são reflexo do histórico.
-24. Os associados importados por `importar_planilhas` recebem a data do dia da importação no histórico.
+24. Os associados importados recebem no histórico a data de `--data-inicio`, obrigatória e sempre no dia 1
+    do mês. (O antigo `importar_planilhas` usava a data do dia da importação; foi removido por isso.)
 25. Exportação sem início ou fim válidos usa os últimos 6 meses, o mesmo padrão da tela.
     Formato diferente de pdf ou csv responde com erro 400.
 26. O CSV traz cabeçalho (associação, regime, período, data de geração), resumo e as duas tabelas, com uma linha de total em cada.

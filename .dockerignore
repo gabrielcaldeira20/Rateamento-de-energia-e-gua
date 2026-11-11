@@ -13,4 +13,3 @@ backups/
 *.sql.gz
 *.csv
 !modelo-associados.csv
-!docs/*.csv

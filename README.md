@@ -113,20 +113,32 @@ o navegador vai reclamar do certificado próprio do Caddy, o que é esperado.
 
 ## Carga inicial e exportação
 
-- **Importar a planilha oficial da associação:** `python manage.py importar_associados ARQUIVO.csv
-  --data-inicio AAAA-MM-01 --simular`, e depois sem `--simular`. A data é o dia 1 do mês em que o sistema
-  entra em operação. Procura por CPF/CNPJ, depois pelo número do padrão e por último pelo nome, então rodar
-  de novo atualiza em vez de duplicar. Rede sem leitura inicial não é ligada, só gera aviso.
-  **O formato está em `modelo-associados.csv`**, na raiz (um teste garante que ele importa sem erro).
-- **Importar associados das planilhas antigas** (esquema anterior, com `contato`, `rede_sede`,
-  `e_associacao` e separador `;`): `python manage.py importar_planilhas associados.csv`.
-  Use `--simular` para validar sem gravar. O formato está em `docs/exemplo_associados.csv`.
-  Não use este comando com a planilha oficial: ele deduplica só pelo nome e não conhece CPF nem padrão.
-  Se uma linha tiver erro, nada é gravado. Nomes já cadastrados são ignorados.
-- **Exportar os dados da associação:** `python manage.py exportar_dados --destino pasta`.
-  Gera CSVs de associados, cobranças, pagamentos, despesas, fechamentos e leituras.
-  Os associados importados recebem no histórico de ligações a data do dia da importação.
-  Para incluir alguém em rateios de meses anteriores, ajuste a data na linha do tempo do associado.
+### Importar associados
+
+Há um único comando de importação. Rode sempre primeiro com `--simular`, que valida e mostra o que
+faria sem gravar nada:
+
+```bash
+python manage.py importar_associados associados.csv --data-inicio AAAA-MM-01 --simular
+python manage.py importar_associados associados.csv --data-inicio AAAA-MM-01
+```
+
+- **`--data-inicio` é obrigatória e precisa ser o dia 1 do mês** em que o sistema entra em operação.
+  Ela é a data dos registros do histórico de ligações, que a cobrança e o rateio consultam. Não tem
+  valor padrão de propósito: cair para "hoje" faria o início da cobrança de todos ser o dia em que
+  alguém rodou o comando.
+- **O formato está em `modelo-associados.csv`**, na raiz. Um teste garante que ele importa sem erro.
+- **Não duplica:** procura pelo CPF/CNPJ, depois pelo número do padrão e, só sem nenhum dos dois, pelo
+  nome. Rodar de novo com a planilha corrigida atualiza os mesmos associados. Célula vazia não apaga dado.
+- **Rede sem leitura inicial não é ligada.** A linha entra com aviso, sem rede e sem histórico de energia,
+  até a planilha trazer a leitura.
+- Se uma linha tiver erro, nada é gravado. Avisos (CPF com dígito inválido, valor da água diferente da
+  Configuração) não impedem a importação.
+
+### Exportar
+
+`python manage.py exportar_dados --destino pasta` gera CSVs de associados, cobranças, pagamentos,
+despesas, fechamentos e leituras.
 
 ## Histórico de ligações
 

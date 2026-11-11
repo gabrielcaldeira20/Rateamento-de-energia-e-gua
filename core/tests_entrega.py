@@ -7,11 +7,10 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from django.core.management import CommandError, call_command
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from associados.models import Associado
 from cobrancas.models import Cobranca
 from core import fabrica
 
@@ -24,30 +23,6 @@ class ComandosTests(TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.pasta, ignore_errors=True)
-
-    def test_importar_planilhas_de_exemplo_e_nao_duplicar(self):
-        saida = io.StringIO()
-        call_command("importar_planilhas", str(RAIZ / "docs" / "exemplo_associados.csv"), stdout=saida)
-        self.assertIn("Criados 3", saida.getvalue())
-        maria = Associado.objects.get(nome="Maria Rodrigues")
-        self.assertEqual(maria.leitura_inicial_sede, 1037)
-        self.assertEqual(maria.valor_mensalidade, Decimal("40.00"))
-        self.assertTrue(maria.agua_ligada)
-        self.assertFalse(maria.rede_poco)
-        self.assertTrue(Associado.objects.get(nome__startswith="Associação").e_associacao)
-        call_command("importar_planilhas", str(RAIZ / "docs" / "exemplo_associados.csv"), stdout=io.StringIO())
-        self.assertEqual(Associado.objects.count(), 3)
-
-    def test_importar_com_erro_nao_grava_nada(self):
-        arquivo = self.pasta / "ruim.csv"
-        arquivo.write_text("nome;contato;rede_sede\nAna;(38) 9999-0000;sim\nBia;(38) 9999-1111;não\n", encoding="utf-8")
-        with self.assertRaises(CommandError):
-            call_command("importar_planilhas", str(arquivo), stdout=io.StringIO(), stderr=io.StringIO())
-        self.assertEqual(Associado.objects.count(), 0)
-
-    def test_importar_simulacao_nao_grava(self):
-        call_command("importar_planilhas", str(RAIZ / "docs" / "exemplo_associados.csv"), "--simular", stdout=io.StringIO())
-        self.assertEqual(Associado.objects.count(), 0)
 
     def test_exportar_dados(self):
         ana = fabrica.associado("Ana")
