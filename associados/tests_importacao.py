@@ -249,3 +249,25 @@ class ImportarAssociadosTests(TestCase):
         finally:
             CABECALHO = original
         self.assertIn("Coluna energia ignorada", saida)
+
+
+class ModeloDaPlanilhaTests(TestCase):
+    """O modelo-associados.csv da raiz é o formato documentado do comando. Se o comando mudar
+    de colunas e o modelo ficar para trás, este teste quebra antes de alguém tomar o erro."""
+
+    def test_modelo_importa_sem_erro(self):
+        from django.conf import settings
+
+        saida = StringIO()
+        call_command("importar_associados", str(settings.BASE_DIR / "modelo-associados.csv"),
+                     f"--data-inicio={DATA}", stdout=saida)
+        texto = saida.getvalue()
+        self.assertIn("Linhas lidas: 4", texto)
+        self.assertIn("Linhas rejeitadas: 0", texto)
+        self.assertEqual(Associado.objects.count(), 4)
+        joao = Associado.objects.get(nome="Joao da Silva")
+        self.assertTrue(joao.rede_sede and joao.padrao_ligado_sede)
+        self.assertEqual((joao.numero_padrao, joao.leitura_inicial_sede), (3, 1520))
+        maria = Associado.objects.get(nome="Maria Souza")
+        self.assertFalse(maria.rede_poco)  # Poço informado sem leitura: aguarda
+        self.assertIn("Linha 3 (Maria Souza): rede Poço informada sem leitura_poco", texto)

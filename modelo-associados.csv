@@ -1,4 +1,5 @@
-nome,endereco,telefone,sede,poco,leitura_sede,leitura_poco,isento_disponibilidade,ativo,observacao
-Joao da Silva,Rua A 100,38999990001,sim,sim,1520,840,nao,sim,
-Maria Souza,Rua B 25,38999990002,sim,nao,980,,nao,sim,medidor trocado em 2025
-Associacao Alfa Serra Velha,Sede da associacao,38999990003,sim,sim,4310,2200,sim,sim,
+nome,cpf_cnpj,endereco,telefone,numero_padrao,sede,poco,padrao_ligado,agua,valor_agua,mensalidade,leitura_sede,leitura_poco,isento_disponibilidade,ativo,observacao
+Joao da Silva,529.982.247-25,Rua Mangaba,38999990001,3,sim,nao,sim,sim,35,15,1520,,nao,sim,
+Maria Souza,111.444.777-35,Rua Pequi,38999990002,6,nao,sim,nao,nao,0,15,,,nao,sim,
+Clube Exemplo,11.222.333/0001-81,Externo,38999990003,,,,,sim,35,15,,,nao,sim,
+Pedro Exemplo,,Rua Jatoba,,,,,,nao,0,15,,,nao,sim,

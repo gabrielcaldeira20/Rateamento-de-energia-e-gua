@@ -116,10 +116,12 @@ o navegador vai reclamar do certificado próprio do Caddy, o que é esperado.
 - **Importar a planilha oficial da associação:** `python manage.py importar_associados ARQUIVO.csv
   --data-inicio AAAA-MM-01 --simular`, e depois sem `--simular`. A data é o dia 1 do mês em que o sistema
   entra em operação. Procura por CPF/CNPJ, depois pelo número do padrão e por último pelo nome, então rodar
-  de novo atualiza em vez de duplicar. Rede sem leitura inicial não é ligada, só gera aviso. As colunas
-  estão no começo do arquivo `associados/management/commands/importar_associados.py`.
-- **Importar associados das planilhas antigas:** `python manage.py importar_planilhas associados.csv`.
+  de novo atualiza em vez de duplicar. Rede sem leitura inicial não é ligada, só gera aviso.
+  **O formato está em `modelo-associados.csv`**, na raiz (um teste garante que ele importa sem erro).
+- **Importar associados das planilhas antigas** (esquema anterior, com `contato`, `rede_sede`,
+  `e_associacao` e separador `;`): `python manage.py importar_planilhas associados.csv`.
   Use `--simular` para validar sem gravar. O formato está em `docs/exemplo_associados.csv`.
+  Não use este comando com a planilha oficial: ele deduplica só pelo nome e não conhece CPF nem padrão.
   Se uma linha tiver erro, nada é gravado. Nomes já cadastrados são ignorados.
 - **Exportar os dados da associação:** `python manage.py exportar_dados --destino pasta`.
   Gera CSVs de associados, cobranças, pagamentos, despesas, fechamentos e leituras.
