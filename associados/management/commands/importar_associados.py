@@ -9,21 +9,25 @@ Ela vira a data dos registros do histórico de ligação (água e, quando inform
 que é o que a cobrança e o rateio consultam.
 
 Colunas obrigatórias no cabeçalho (separador , ou ;):
-  nome, cpf_cnpj, telefone, agua, valor_agua, mensalidade, sede, poco,
-  leitura_sede, leitura_poco, ativo
-Opcionais: endereco, energia, isento_disponibilidade, observacao.
+  nome, cpf_cnpj, telefone, numero_padrao, sede, poco, padrao_ligado, agua, valor_agua,
+  mensalidade, leitura_sede, leitura_poco, ativo
+Opcionais: endereco, isento_disponibilidade, observacao. A antiga coluna energia é ignorada:
+a fonte da verdade da rede é a folha de leitura dos padrões (sede, poco, numero_padrao).
 
 Célula vazia é ausência de informação, não "não": o campo correspondente não é alterado.
-Isso vale em especial para sede, poco e as leituras, que podem vir vazias até o cliente
-informar; rodar de novo depois, com as colunas preenchidas, atualiza os mesmos registros.
 
-Não duplica: procura pelo CPF/CNPJ; quando a linha não tem documento, procura pelo nome
-entre os associados que também não têm documento.
+Rede sem leitura inicial não é ligada. Sem leitura, o primeiro fechamento usaria 0 como
+leitura anterior e cobraria o relógio inteiro como consumo. A linha não é rejeitada: a rede,
+o padrao_ligado e o histórico de energia ficam de fora, com aviso, até a planilha trazer a
+leitura. Rodar de novo, com a leitura, liga a rede na --data-inicio.
+
+Não duplica: procura pelo CPF/CNPJ, depois pelo numero_padrao e, sem nenhum dos dois, pelo
+nome entre os associados que também não têm documento nem padrão.
 Tudo roda em uma transação: se uma linha tiver erro, nada é gravado.
 
 Não importa (o sistema ainda não tem onde guardar ou não usa):
-  energia, isento_disponibilidade, observacao e o valor_agua por pessoa. Diferenças
-  aparecem como aviso no resumo.
+  isento_disponibilidade, observacao e o valor_agua por pessoa. Diferenças aparecem como
+  aviso no resumo.
 """
 import csv
 import re
@@ -40,8 +44,8 @@ from associados.services import recalcular_estado, registrar_mudanca, situacao_e
 from core.models import Configuracao
 
 OBRIGATORIAS = [
-    "nome", "cpf_cnpj", "telefone", "agua", "valor_agua", "mensalidade",
-    "sede", "poco", "leitura_sede", "leitura_poco", "ativo",
+    "nome", "cpf_cnpj", "telefone", "numero_padrao", "sede", "poco", "padrao_ligado",
+    "agua", "valor_agua", "mensalidade", "leitura_sede", "leitura_poco", "ativo",
 ]
 VERDADEIROS = {"sim", "s", "true", "1"}
 FALSOS = {"nao", "não", "n", "false", "0"}
@@ -218,7 +222,7 @@ class Command(BaseCommand):
     def validar(self, registros, colunas):
         """Converte e confere cada linha antes de gravar qualquer coisa."""
         validos, erros = [], []
-        documentos, nomes_sem_doc = {}, {}
+        documentos, nomes_sem_doc, padroes = {}, {}, {}
         for numero, linha in registros:
             nome = re.sub(r"\s+", " ", linha.get("nome", ""))
             problemas = []
@@ -240,18 +244,9 @@ class Command(BaseCommand):
                     problemas.append(f"CPF/CNPJ repetido (já aparece na linha {documentos[cpf]})")
                 else:
                     documentos[cpf] = numero
-            elif nome:
-                chave = nome.lower()
-                if chave in nomes_sem_doc:
-                    problemas.append(
-                        f"nome repetido sem CPF/CNPJ (já aparece na linha {nomes_sem_doc[chave]}); "
-                        "sem documento, o nome é a única forma de não duplicar"
-                    )
-                else:
-                    nomes_sem_doc[chave] = numero
-
             conversoes = [
                 ("ativo", booleano), ("agua", booleano), ("sede", booleano), ("poco", booleano),
+                ("padrao_ligado", booleano), ("numero_padrao", inteiro),
                 ("leitura_sede", inteiro), ("leitura_poco", inteiro),
                 ("valor_agua", dinheiro), ("mensalidade", dinheiro),
             ]
@@ -260,25 +255,57 @@ class Command(BaseCommand):
                     dados[coluna] = converter(linha.get(coluna, ""), coluna)
                 except ValueError as erro:
                     problemas.append(str(erro))
-            for coluna in ("isento_disponibilidade", "energia"):
-                if coluna in colunas:
-                    try:
-                        dados[coluna] = booleano(linha.get(coluna, ""), coluna)
-                    except ValueError as erro:
-                        problemas.append(str(erro))
+            if "isento_disponibilidade" in colunas:
+                try:
+                    dados["isento_disponibilidade"] = booleano(linha.get("isento_disponibilidade", ""), "isento_disponibilidade")
+                except ValueError as erro:
+                    problemas.append(str(erro))
             dados["observacao"] = linha.get("observacao", "")
+
+            padrao = dados.get("numero_padrao")
+            if padrao is not None:
+                if padrao == 0 or padrao > 32767:
+                    problemas.append(f"numero_padrao {padrao} fora do intervalo (1 a 32767)")
+                elif padrao in padroes:
+                    problemas.append(f"numero_padrao {padrao} repetido (já aparece na linha {padroes[padrao]})")
+                else:
+                    padroes[padrao] = numero
+            if not cpf and padrao is None and nome:
+                chave = nome.lower()
+                if chave in nomes_sem_doc:
+                    problemas.append(
+                        f"nome repetido sem CPF/CNPJ nem numero_padrao (já aparece na linha {nomes_sem_doc[chave]}); "
+                        "nesse caso o nome é a única forma de não duplicar"
+                    )
+                else:
+                    nomes_sem_doc[chave] = numero
 
             if not problemas:
                 if dados["mensalidade"] is None:
                     problemas.append("mensalidade vazia")
-                for _, rede, _ in REDES:
+                for _, rede, rotulo in REDES:
                     ligado, leitura = dados[rede], dados[f"leitura_{rede}"]
-                    if ligado and leitura is None:
-                        problemas.append(f"{rede} = sim exige leitura_{rede}")
+                    dados[f"pendente_{rede}"] = bool(ligado and leitura is None)
+                    if dados[f"pendente_{rede}"]:
+                        estado = {True: "ligado", False: "desligado", None: "não informado"}[dados["padrao_ligado"]]
+                        self.avisar(numero, nome,
+                                    f"rede {rotulo} informada sem leitura_{rede}: não ligada nesta importação "
+                                    f"(padrão {estado}); rode de novo quando a leitura chegar")
+                    elif ligado and dados["padrao_ligado"] is None:
+                        problemas.append(f"{rede} = sim com leitura, mas padrao_ligado vazio")
                     elif ligado is False and leitura is not None:
                         problemas.append(f"leitura_{rede} preenchida, mas {rede} = não")
                     elif ligado is None and leitura is not None:
                         problemas.append(f"leitura_{rede} preenchida, mas {rede} está vazio")
+                tem_rede = dados["sede"] or dados["poco"]
+                if dados["sede"] and dados["poco"]:
+                    self.avisar(numero, nome, "sede e poco = sim: o cadastro guarda um único numero_padrao por associado")
+                if padrao is not None and not tem_rede:
+                    self.avisar(numero, nome, f"numero_padrao {padrao} sem rede informada")
+                if tem_rede and padrao is None:
+                    self.avisar(numero, nome, "rede informada sem numero_padrao")
+                if dados["padrao_ligado"] is not None and not tem_rede:
+                    self.avisar(numero, nome, "padrao_ligado preenchido sem rede informada")
                 self.avisos_de_valores(numero, dados)
 
             if problemas:
@@ -304,19 +331,31 @@ class Command(BaseCommand):
     # ------------------------------------------------------------ gravação
 
     def localizar(self, dados):
-        """Por CPF/CNPJ; sem documento, pelo nome entre os que também não têm documento."""
-        if dados["cpf_cnpj"]:
-            existente = Associado.objects.filter(cpf_cnpj=dados["cpf_cnpj"]).first()
+        """Por CPF/CNPJ, depois por numero_padrao; sem nenhum dos dois, pelo nome."""
+        cpf, padrao = dados["cpf_cnpj"], dados["numero_padrao"]
+        if cpf:
+            existente = Associado.objects.filter(cpf_cnpj=cpf).first()
             if existente:
                 return existente
-            sem_doc = Associado.objects.filter(nome__iexact=dados["nome"], cpf_cnpj__isnull=True)
-            if sem_doc.exists():
+        if padrao is not None:
+            existente = Associado.objects.filter(numero_padrao=padrao).first()
+            if existente:
+                if cpf and existente.cpf_cnpj and existente.cpf_cnpj != cpf:
+                    raise ValidationError(
+                        f"o padrão {padrao} já é de {existente.nome}, com outro CPF/CNPJ ({existente.cpf_cnpj})"
+                    )
+                return existente
+        sem_chave = Associado.objects.filter(
+            nome__iexact=dados["nome"], cpf_cnpj__isnull=True, numero_padrao__isnull=True,
+        )
+        if cpf or padrao is not None:
+            if sem_chave.exists():
                 raise ValidationError(
-                    "já existe associado com este nome e sem CPF/CNPJ; para não duplicar nem casar "
-                    "pelo nome, cadastre o documento nele pelo sistema e rode de novo"
+                    "já existe associado com este nome e sem CPF/CNPJ nem numero_padrao; para não duplicar "
+                    "nem casar pelo nome, cadastre o documento ou o padrão nele pelo sistema e rode de novo"
                 )
             return None
-        existentes = list(Associado.objects.filter(nome__iexact=dados["nome"], cpf_cnpj__isnull=True))
+        existentes = list(sem_chave)
         if len(existentes) > 1:
             raise ValidationError(f"há {len(existentes)} associados sem CPF/CNPJ com este nome; acerte pelo sistema")
         return existentes[0] if existentes else None
@@ -330,6 +369,8 @@ class Command(BaseCommand):
         associado.nome = dados["nome"]
         if dados["cpf_cnpj"]:
             associado.cpf_cnpj = dados["cpf_cnpj"]
+        if dados["numero_padrao"] is not None:
+            associado.numero_padrao = dados["numero_padrao"]
         if dados["contato"] or novo:
             associado.contato = dados["contato"]
         if dados["endereco"] or novo:
@@ -339,21 +380,22 @@ class Command(BaseCommand):
         associado.valor_mensalidade = dados["mensalidade"]
         for _, rede, _ in REDES:
             ligado = dados[rede]
-            if ligado is None:
-                continue  # rede não informada: não mexe
-            # Sem coluna de padrão na planilha, o padrão acompanha a rede informada.
+            if ligado is None or dados[f"pendente_{rede}"]:
+                continue  # rede não informada, ou informada sem leitura: não mexe
             setattr(associado, f"rede_{rede}", ligado)
-            setattr(associado, f"padrao_ligado_{rede}", ligado)
+            setattr(associado, f"padrao_ligado_{rede}", bool(ligado and dados["padrao_ligado"]))
             if ligado:
                 setattr(associado, f"leitura_inicial_{rede}", dados[f"leitura_{rede}"])
         associado.full_clean()
         associado.save()
 
         observacao = f"Início do sistema em {data:%d/%m/%Y} (importação)"
-        # Redes: só as efetivamente informadas, e só o que muda na data.
+        # Redes: só as informadas com leitura (ou desligadas), e só o que muda na data.
         for tipo, rede, _ in REDES:
             ligado = dados[rede]
-            if ligado is not None and situacao_em(associado, tipo, data) != ligado:
+            if ligado is None or dados[f"pendente_{rede}"]:
+                continue
+            if situacao_em(associado, tipo, data) != ligado:
                 registrar_mudanca(associado, tipo, ligado, data, observacao)
         # Água: um registro para quem tem água, e nunca um segundo.
         if dados["agua"]:
@@ -367,11 +409,15 @@ class Command(BaseCommand):
 
     def descrever(self, dados):
         partes = []
+        if dados["numero_padrao"] is not None:
+            partes.append(f"padrão {dados['numero_padrao']}")
         for _, rede, rotulo in REDES:
-            if dados[rede]:
+            if dados[rede] and dados[f"pendente_{rede}"]:
+                partes.append(f"{rotulo} aguardando leitura")
+            elif dados[rede]:
                 partes.append(f"{rotulo} (leitura {dados[f'leitura_{rede}']})")
-        if dados["sede"] is None and dados["poco"] is None:
-            partes.append("rede não definida")
+        if not (dados["sede"] or dados["poco"]):
+            partes.append("sem rede")
         if dados["agua"]:
             partes.append("água")
         partes.append(f"mensalidade R$ {dados['mensalidade']}")
@@ -389,11 +435,25 @@ class Command(BaseCommand):
         def vazio(linha, coluna):
             return not linha.get(coluna, "").strip()
 
+        def sim(linha, coluna):
+            return linha.get(coluna, "").strip().lower() in VERDADEIROS
+
+        def nao(linha, coluna):
+            return linha.get(coluna, "").strip().lower() in FALSOS
+
         linhas = [linha for _, linha in registros]
         sem_cpf = sum(vazio(l, "cpf_cnpj") for l in linhas)
         sem_tel = sum(not re.sub(r"\D", "", l.get("telefone", "")) for l in linhas)
-        sem_rede = sum(vazio(l, "sede") and vazio(l, "poco") for l in linhas)
-        sem_leitura = sum(vazio(l, "leitura_sede") and vazio(l, "leitura_poco") for l in linhas)
+        sem_padrao = sum(vazio(l, "numero_padrao") for l in linhas)
+        na_sede = sum(sim(l, "sede") for l in linhas)
+        no_poco = sum(sim(l, "poco") for l in linhas)
+        com_rede = sum(sim(l, "sede") or sim(l, "poco") for l in linhas)
+        padrao_desligado = sum(nao(l, "padrao_ligado") for l in linhas)
+        com_leitura = sum(not (vazio(l, "leitura_sede") and vazio(l, "leitura_poco")) for l in linhas)
+        aguardando = sum(
+            (sim(l, "sede") and vazio(l, "leitura_sede")) or (sim(l, "poco") and vazio(l, "leitura_poco"))
+            for l in linhas
+        )
 
         verbo = "seriam " if simular or erros else ""
         w = self.stdout.write
@@ -406,15 +466,20 @@ class Command(BaseCommand):
         w(f"  Linhas rejeitadas: {rejeitadas}")
         w(f"  Sem CPF/CNPJ: {sem_cpf}")
         w(f"  Sem telefone: {sem_tel} (não recebem lembrete pelo WhatsApp)")
-        aviso_rede = self.style.WARNING if sem_rede else str
-        w(aviso_rede(f"  Sem rede definida (sede e poco vazios): {sem_rede}"))
-        w(aviso_rede(f"  Sem leitura inicial (leitura_sede e leitura_poco vazias): {sem_leitura}"))
-        if sem_rede:
+        w(f"  Sem numero_padrao: {sem_padrao}")
+        w(f"  Com rede definida: {com_rede} (Sede: {na_sede}, Poço: {no_poco})")
+        w(f"  Sem rede: {len(linhas) - com_rede}")
+        w(f"  Padrão desligado: {padrao_desligado}")
+        w(f"  Com leitura inicial: {com_leitura}")
+        if aguardando:
             w(self.style.WARNING(
-                "    Esses associados ficam fora do rateio de energia até a planilha trazer a rede e a leitura. "
-                "Rode o comando de novo com as colunas preenchidas: os registros serão atualizados."
+                f"  Rede informada sem leitura inicial: {aguardando}. A rede, o padrao_ligado e o histórico de "
+                "energia ficaram de fora e eles não entram no rateio. Rode de novo quando as leituras "
+                "chegarem: os mesmos registros serão atualizados."
             ))
-        ignoradas = [c for c in ("energia", "isento_disponibilidade", "observacao") if c in colunas]
+        if "energia" in colunas:
+            w("  Coluna energia ignorada: a rede vem de sede, poco e numero_padrao.")
+        ignoradas = [c for c in ("isento_disponibilidade", "observacao") if c in colunas]
         if ignoradas:
             w(f"  Colunas lidas e não gravadas: {', '.join(ignoradas)} (o sistema não tem onde guardar)")
 

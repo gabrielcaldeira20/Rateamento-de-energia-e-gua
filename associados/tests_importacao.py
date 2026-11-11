@@ -14,8 +14,8 @@ from core import fabrica
 from energia import services as energia
 
 CABECALHO = (
-    "nome,cpf_cnpj,endereco,telefone,energia,agua,valor_agua,mensalidade,"
-    "sede,poco,leitura_sede,leitura_poco,isento_disponibilidade,ativo,observacao"
+    "nome,cpf_cnpj,endereco,telefone,numero_padrao,sede,poco,padrao_ligado,agua,valor_agua,mensalidade,"
+    "leitura_sede,leitura_poco,isento_disponibilidade,ativo,observacao"
 )
 DATA = "2026-12-01"
 INICIO = date(2026, 12, 1)
@@ -26,9 +26,11 @@ CNPJ_OK = "11.222.333/0001-81"
 
 def linha(nome="Joao", cpf=CPF_OK, telefone="38999990001", agua="sim", valor_agua="35", mensalidade="15",
           sede="", poco="", leitura_sede="", leitura_poco="", isento="nao", ativo="sim", observacao="",
-          endereco="Mangaba", energia_="sim"):
-    return ",".join([nome, cpf, endereco, telefone, energia_, agua, valor_agua, mensalidade,
-                     sede, poco, leitura_sede, leitura_poco, isento, ativo, observacao])
+          endereco="Mangaba", padrao="", padrao_ligado=None):
+    if padrao_ligado is None:
+        padrao_ligado = "sim" if (sede in ("sim", "S") or poco in ("sim", "TRUE")) else ""
+    return ",".join([nome, cpf, endereco, telefone, padrao, sede, poco, padrao_ligado, agua, valor_agua,
+                     mensalidade, leitura_sede, leitura_poco, isento, ativo, observacao])
 
 
 class ImportarAssociadosTests(TestCase):
@@ -58,8 +60,8 @@ class ImportarAssociadosTests(TestCase):
         self.assertFalse(joao.rede_sede or joao.rede_poco or joao.padrao_ligado_sede or joao.padrao_ligado_poco)
         self.assertIsNone(joao.leitura_inicial_sede)
         self.assertFalse(HistoricoLigacao.objects.filter(tipo__in=["SEDE", "POCO"]).exists())
-        self.assertIn("Sem rede definida (sede e poco vazios): 2", saida)
-        self.assertIn("Sem leitura inicial (leitura_sede e leitura_poco vazias): 2", saida)
+        self.assertIn("Sem rede: 2", saida)
+        self.assertIn("Com leitura inicial: 0", saida)
         self.assertIn("Sem CPF/CNPJ: 1", saida)
 
     def test_associado_sem_rede_nenhuma_nao_e_erro(self):
@@ -173,7 +175,8 @@ class ImportarAssociadosTests(TestCase):
     def test_uma_linha_com_erro_nada_e_gravado(self):
         casos = [
             linha("", cpf=CNPJ_OK),                                  # nome vazio
-            linha("Ana", cpf=CNPJ_OK, sede="sim"),                   # rede sem leitura
+            linha("Ana", cpf=CNPJ_OK, sede="sim", leitura_sede="5", padrao_ligado=""),  # sem padrao_ligado
+            linha("Ana", cpf=CNPJ_OK, padrao="7"),                    # padrão repetido
             linha("Ana", cpf=CNPJ_OK, sede="nao", leitura_sede="5"),  # leitura em rede desligada
             linha("Ana", cpf=CNPJ_OK, leitura_sede="5"),              # leitura com rede vazia
             linha("Ana", cpf=CNPJ_OK, sede="sim", leitura_sede="-5"),
@@ -182,10 +185,11 @@ class ImportarAssociadosTests(TestCase):
             linha("Ana", cpf=CNPJ_OK, valor_agua="-1"),
             linha("Ana", cpf=CNPJ_OK, mensalidade="-15"),
             linha("Ana", cpf=CPF_OK),                                # CPF repetido na planilha
+            linha("Ana", cpf=CNPJ_OK, padrao="abc"),
         ]
         for caso in casos:
             with self.subTest(caso=caso), self.assertRaises(CommandError) as ctx:
-                self.importar(linha(), caso)
+                self.importar(linha(padrao="7"), caso)
             self.assertIn("Linha 3", ctx.exception.saida)
             self.assertIn("Linhas rejeitadas: 1", ctx.exception.saida)
             self.assertFalse(Associado.objects.exists())
@@ -195,3 +199,53 @@ class ImportarAssociadosTests(TestCase):
         self.assertIn("observação descartada", saida)
         self.assertIn("isento_disponibilidade = sim não é importado", saida)
         self.assertFalse(Associado.objects.get().e_associacao)
+
+    # ------------------------------------------------------------ numero_padrao e rede sem leitura
+
+    def test_rede_sem_leitura_nao_liga_e_so_avisa(self):
+        saida = self.importar(
+            linha(padrao="5", sede="sim", poco="nao", padrao_ligado="sim"),
+            linha("Ana", cpf=CNPJ_OK, padrao="16", sede="sim", poco="nao", padrao_ligado="nao"),
+            linha("Bia", cpf="", padrao="27", sede="nao", poco="sim", padrao_ligado="nao"),
+        )
+        self.assertEqual(Associado.objects.count(), 3)
+        for a in Associado.objects.all():
+            self.assertFalse(a.rede_sede or a.rede_poco or a.padrao_ligado_sede or a.padrao_ligado_poco)
+        self.assertFalse(HistoricoLigacao.objects.filter(tipo__in=["SEDE", "POCO"]).exists())
+        self.assertEqual(Associado.objects.get(nome="Joao").numero_padrao, 5)
+        self.assertIn("Com rede definida: 3 (Sede: 2, Poço: 1)", saida)
+        self.assertIn("Padrão desligado: 2", saida)
+        self.assertIn("Rede informada sem leitura inicial: 3", saida)
+        self.assertIn("Linha 3 (Ana): rede Sede informada sem leitura_sede: não ligada nesta importação (padrão desligado)", saida)
+
+    def test_sem_padrao_grava_nulo(self):
+        self.importar(linha(), linha("Ana", cpf=CNPJ_OK))
+        self.assertEqual(Associado.objects.filter(numero_padrao__isnull=True).count(), 2)
+
+    def test_casa_pelo_numero_padrao_quando_nao_ha_documento(self):
+        self.importar(linha("Marcio", cpf="", padrao="38", sede="sim"))
+        saida = self.importar(linha("Márcio Barbosa", cpf="", padrao="38", sede="sim", leitura_sede="900"))
+        self.assertIn("atualizados: 1", saida)
+        marcio = Associado.objects.get()
+        self.assertEqual(marcio.nome, "Márcio Barbosa")
+        self.assertTrue(marcio.rede_sede and marcio.padrao_ligado_sede)
+        self.assertEqual(marcio.leitura_inicial_sede, 900)
+        self.assertTrue(HistoricoLigacao.objects.filter(associado=marcio, tipo="SEDE", data=INICIO, ligado=True).exists())
+
+    def test_segunda_rodada_com_leitura_e_padrao_desligado(self):
+        self.importar(linha(padrao="16", sede="sim", poco="nao", padrao_ligado="nao"))
+        self.importar(linha(padrao="16", sede="sim", poco="nao", padrao_ligado="nao", leitura_sede="300"))
+        joao = Associado.objects.get()
+        self.assertTrue(joao.rede_sede)
+        self.assertFalse(joao.padrao_ligado_sede)
+        self.assertNotIn(joao, energia.elegiveis_energia("SEDE"))
+
+    def test_coluna_energia_antiga_e_ignorada(self):
+        global CABECALHO
+        original = CABECALHO
+        try:
+            CABECALHO = original + ",energia"
+            saida = self.importar(linha() + ",sim")
+        finally:
+            CABECALHO = original
+        self.assertIn("Coluna energia ignorada", saida)

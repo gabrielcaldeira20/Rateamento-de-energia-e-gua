@@ -12,7 +12,7 @@ class AssociadoForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Associado
         fields = [
-            "nome", "cpf_cnpj", "contato", "endereco", "valor_mensalidade", "e_associacao",
+            "nome", "cpf_cnpj", "numero_padrao", "contato", "endereco", "valor_mensalidade", "e_associacao",
             "rede_sede", "padrao_ligado_sede", "leitura_inicial_sede",
             "rede_poco", "padrao_ligado_poco", "leitura_inicial_poco",
             "agua_ligada",

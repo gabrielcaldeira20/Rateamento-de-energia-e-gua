@@ -12,6 +12,11 @@ class Associado(models.Model):
         "CPF/CNPJ", max_length=18, null=True, blank=True, unique=True,
         help_text="Opcional. Vazio é gravado como nulo, para não colidir na restrição de único.",
     )
+    numero_padrao = models.PositiveSmallIntegerField(
+        "número do padrão", null=True, blank=True, unique=True,
+        help_text="Número do medidor na folha de leitura da associação (sequência única nas duas redes). "
+        "Vazio para quem não tem medidor.",
+    )
     contato = models.CharField(
         "contato/WhatsApp", max_length=40, blank=True,
         help_text="Opcional. Sem telefone, o associado não recebe lembrete pelo WhatsApp.",
