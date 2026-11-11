@@ -31,13 +31,7 @@ if not SECRET_KEY:
         raise RuntimeError("Defina a variável de ambiente SECRET_KEY (ou DEBUG=True em desenvolvimento).")
 
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
-# O Render informa o próprio endereço nesta variável.
-RENDER_HOST = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
-if RENDER_HOST:
-    ALLOWED_HOSTS.append(RENDER_HOST)
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
-if RENDER_HOST:
-    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_HOST}")
 
 INSTALLED_APPS = [
     "django.contrib.admin",

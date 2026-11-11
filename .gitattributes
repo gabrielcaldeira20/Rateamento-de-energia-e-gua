@@ -1,4 +1,4 @@
-# Fins de linha LF no repositório. O build.sh precisa de LF para rodar no Render (Linux).
+# Fins de linha LF no repositório. Os scripts .sh precisam de LF para rodar no servidor Linux.
 * text=auto eol=lf
 *.png binary
 *.jpg binary

@@ -1,6 +1,6 @@
 # Sistema de Gestão Financeira — Associação Alfa Serra Velha
 
-Monolito Django com templates, PostgreSQL em produção e hospedagem no Render.
+Monolito Django com templates, PostgreSQL em produção e hospedagem num VPS com Docker.
 Há um único usuário, o tesoureiro, com login real do Django.
 
 ## Rodar localmente
@@ -28,44 +28,97 @@ Testes:
 DEBUG=True python manage.py test
 ```
 
-## Publicar no Render
+## Publicar no VPS
 
-São dois recursos: um PostgreSQL e um Web Service. Os planos Starter evitam que o
-serviço hiberne e que o banco gratuito expire. Confira os preços atuais no site do Render.
+São três contêineres, definidos no `docker-compose.yml`: o banco (PostgreSQL 16, sem porta aberta
+para fora), a aplicação (Django com gunicorn) e o Caddy, que emite o certificado HTTPS sozinho e
+serve os arquivos estáticos. Um VPS Ubuntu 22.04 ou 24.04 com 1 ou 2 GB de memória basta.
 
-1. Suba este repositório para o GitHub.
-2. No Render, crie um **PostgreSQL**. Depois de criado, copie a **Internal Database URL**.
-3. Crie um **Web Service** ligado ao repositório, com ambiente Python.
-4. Comando de build: `./build.sh`
-   (equivale a `pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate`).
-5. Comando de início: `gunicorn config.wsgi:application`
-6. Em **Environment**, cadastre as variáveis do arquivo `.env.example`:
-
-   | Variável | Valor |
-   |---|---|
-   | `SECRET_KEY` | chave longa e aleatória (veja o comando no `.env.example`) |
-   | `DEBUG` | `False` |
-   | `DATABASE_URL` | Internal Database URL do passo 2 |
-   | `ALLOWED_HOSTS` | `nome-do-servico.onrender.com` |
-   | `CSRF_TRUSTED_ORIGINS` | `https://nome-do-servico.onrender.com` |
-   | `PYTHON_VERSION` | `3.13.5` |
-
-7. Faça o primeiro deploy. Depois, abra o **Shell** do serviço e crie o usuário do tesoureiro:
+1. **Domínio:** crie um registro A apontando o domínio para o IP do VPS.
+2. **Preparar o servidor**, como root, uma única vez. O script atualiza o sistema, liga as
+   atualizações automáticas de segurança, acerta o fuso para Brasília, cria swap, instala o Docker,
+   liga o firewall (só SSH, HTTP e HTTPS) e cria o usuário `alfa`:
 
    ```bash
-   python manage.py createsuperuser
+   scp instalar-vps.sh root@IP_DO_SERVIDOR:
+   ssh root@IP_DO_SERVIDOR bash instalar-vps.sh
    ```
 
-8. Ative o deploy automático a cada envio para a branch principal.
+3. **Baixar o projeto**, já como o usuário `alfa`. Se o repositório for privado, cadastre no GitHub
+   uma *deploy key* somente leitura para o servidor:
 
-O HTTPS é fornecido pelo Render no endereço `onrender.com`. Em produção, os cookies de
-sessão e CSRF são marcados como seguros e o tráfego HTTP é redirecionado para HTTPS.
-O HSTS fica desligado por padrão. Para ligar, defina `SECURE_HSTS_SECONDS` (por exemplo, `31536000`)
-depois de confirmar que o site funciona só por HTTPS.
+   ```bash
+   ssh alfa@IP_DO_SERVIDOR
+   git clone URL_DO_REPOSITORIO /opt/alfa-serra-velha
+   cd /opt/alfa-serra-velha
+   cp .env.example .env && chmod 600 .env
+   nano .env
+   ```
+
+   No `.env`, preencha `DOMINIO`, `ACME_EMAIL`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` (com `https://`),
+   `SECRET_KEY`, `POSTGRES_PASSWORD` e `DJANGO_SUPERUSER_PASSWORD`. Os comandos para gerar a chave e a
+   senha estão no próprio arquivo. `DEBUG` fica `False`. O `.env` nunca vai para o GitHub.
+
+4. **Subir:**
+
+   ```bash
+   docker compose up -d --build
+   docker compose logs web     # migrações, collectstatic e "Listening at: http://0.0.0.0:8000"
+   ```
+
+   O administrador é criado na primeira subida com as variáveis `DJANGO_SUPERUSER_*`.
+   Acesse `https://SEU_DOMINIO` e entre com ele.
+
+5. **Backup diário:** `bash instalar-backup.sh` agenda o backup para 03:17. Rode `bash backup.sh` uma vez
+   na hora para conferir. Falta configurar a cópia externa, veja a seção **Backup**.
+
+6. **Importar os associados.** A planilha tem dados pessoais: ela vai direto por `scp`, é importada e é
+   apagada do servidor. Rode sempre primeiro com `--simular`:
+
+   ```bash
+   # na sua máquina
+   scp associados-para-importar.csv alfa@IP_DO_SERVIDOR:/opt/alfa-serra-velha/
+   # no servidor
+   docker compose cp associados-para-importar.csv web:/app/
+   docker compose exec web python manage.py importar_associados associados-para-importar.csv --data-inicio AAAA-MM-01 --simular
+   docker compose exec web python manage.py importar_associados associados-para-importar.csv --data-inicio AAAA-MM-01
+   docker compose exec web rm /app/associados-para-importar.csv
+   rm associados-para-importar.csv
+   ```
+
+7. **Ensaiar a restauração** antes de depender dela: siga a seção **Backup**.
+
+8. **Fechar o acesso do root:** depois de confirmar que entra como `alfa`, defina `PermitRootLogin no` e
+   `PasswordAuthentication no` em `/etc/ssh/sshd_config` e rode `sudo systemctl restart ssh`.
+
+**Atualizar o sistema** depois de um envio para o GitHub:
+
+```bash
+cd /opt/alfa-serra-velha
+bash backup.sh
+git pull
+docker compose up -d --build
+```
+
+As migrações rodam sozinhas a cada subida do contêiner da aplicação.
+
+**HTTPS:** o Caddy emite e renova o certificado da Let's Encrypt e redireciona HTTP para HTTPS.
+Ele também envia o cabeçalho HSTS de um ano. O Django marca os cookies de sessão e CSRF como seguros
+e confia no cabeçalho `X-Forwarded-Proto` que o Caddy repassa.
+
+**Testar na sua máquina** antes do servidor: use no `.env` `DOMINIO=:80`, `DEBUG=True`,
+`ALLOWED_HOSTS=localhost,127.0.0.1` e `CSRF_TRUSTED_ORIGINS=http://localhost`, e acesse `http://localhost`.
+Para testar o modo produção, `DOMINIO=localhost`, `DEBUG=False` e `CSRF_TRUSTED_ORIGINS=https://localhost`;
+o navegador vai reclamar do certificado próprio do Caddy, o que é esperado.
 
 ## Carga inicial e exportação
 
-- **Importar associados das planilhas:** `python manage.py importar_planilhas associados.csv`.
+- **Importar a planilha oficial da associação:** `python manage.py importar_associados ARQUIVO.csv
+  --data-inicio AAAA-MM-01 --simular`, e depois sem `--simular`. A data é o dia 1 do mês em que o sistema
+  entra em operação. Procura por CPF/CNPJ, depois pelo número do padrão e por último pelo nome, então rodar
+  de novo atualiza em vez de duplicar. Rede sem leitura inicial não é ligada, só gera aviso. As colunas
+  estão no começo do arquivo `associados/management/commands/importar_associados.py`.
+- **Importar associados das planilhas antigas:** `python manage.py importar_planilhas associados.csv`.
   Use `--simular` para validar sem gravar. O formato está em `docs/exemplo_associados.csv`.
   Se uma linha tiver erro, nada é gravado. Nomes já cadastrados são ignorados.
 - **Exportar os dados da associação:** `python manage.py exportar_dados --destino pasta`.
@@ -95,12 +148,24 @@ Os números vêm das mesmas funções da tela. O CSV usa UTF-8 com BOM, ponto e 
 
 ## Backup
 
-Confira no painel do Render a política de backup do plano do PostgreSQL contratado.
-Como reforço, guarde um `pg_dump` mensal fora do Render:
+- **`backup.sh`** gera `backups/alfa-AAAA-MM-DD_HHMM.sql.gz` com o `pg_dump` do banco, recusa arquivos
+  suspeitos de vazios e apaga os de mais de 30 dias. O `instalar-backup.sh` o agenda para todo dia às 03:17,
+  com registro em `backups/backup.log`.
+- **`restaurar.sh ARQUIVO`** pede a confirmação `RESTAURAR`, guarda antes um dump do estado atual,
+  recria o banco e restaura. Ele para no primeiro erro e, nesse caso, deixa a aplicação parada e mostra
+  o comando para voltar ao estado anterior.
+- **Cópia externa: ainda não configurada.** Hoje os backups ficam só no próprio VPS. Se o servidor for
+  perdido, eles vão junto. As opções estão comentadas no fim do `backup.sh`.
+
+Ensaio de restauração, para fazer no servidor antes de precisar:
 
 ```bash
-pg_dump "$DATABASE_URL" --format=custom --file=asv-$(date +%Y-%m).dump
+bash backup.sh
+bash restaurar.sh backups/alfa-AAAA-MM-DD_HHMM.sql.gz   # o arquivo que acabou de ser gerado
 ```
+
+Depois, abra o sistema e confira os associados. Na sua máquina, os dois scripts rodam com
+`PASTA="$PWD" bash backup.sh` e `PASTA="$PWD" bash restaurar.sh ARQUIVO`.
 
 ## Organização do código
 

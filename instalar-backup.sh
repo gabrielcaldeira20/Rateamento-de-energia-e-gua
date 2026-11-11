@@ -14,6 +14,8 @@ if crontab -l 2>/dev/null | grep -qF "backup.sh"; then
     exit 0
 fi
 
+# O cron grava o log em backups/ antes de o backup.sh rodar: a pasta precisa existir.
+mkdir -p "${PASTA}/backups"
 (crontab -l 2>/dev/null; echo "$LINHA") | crontab -
 echo "Backup agendado para todo dia as 03:17."
 echo "O registro de cada execucao fica em ${PASTA}/backups/backup.log"

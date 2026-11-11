@@ -86,5 +86,9 @@ class LoginEmTodasAsTelasTests(TestCase):
             self.assertEqual(resp.status_code, 302, nome)
             self.assertTrue(resp.url.startswith(reverse("login")), nome)
 
-    def test_build_sh_usa_fim_de_linha_lf(self):
-        self.assertNotIn(b"\r\n", (RAIZ / "build.sh").read_bytes())
+    def test_scripts_do_servidor_usam_fim_de_linha_lf(self):
+        scripts = sorted(RAIZ.glob("*.sh"))
+        self.assertTrue(scripts)
+        for script in scripts:
+            with self.subTest(script=script.name):
+                self.assertNotIn(b"\r\n", script.read_bytes())

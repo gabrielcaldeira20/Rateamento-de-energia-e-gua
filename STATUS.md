@@ -1,7 +1,7 @@
 # Status da construção
 
 Só fica marcado como pronto o que tem teste automatizado passando.
-Para rodar os testes: `DEBUG=True python manage.py test` (101 testes, todos passando).
+Para rodar os testes: `DEBUG=True python manage.py test` (128 testes, todos passando).
 
 | Fase | Item | Status | Testes |
 |---|---|---|---|
@@ -12,7 +12,7 @@ Para rodar os testes: `DEBUG=True python manage.py test` (101 testes, todos pass
 | 5 | Despesas e painel inicial | [x] pronto | despesas/tests.py |
 | 6 | Lembrete pelo WhatsApp | [x] pronto | cobrancas/tests.py (WhatsAppTests) |
 | 7 | Relatório financeiro | [x] pronto | relatorios/tests.py |
-| 8 | Entrega: requirements, build.sh, .env.example, README do Render | [x] pronto | core/tests_entrega.py |
+| 8 | Entrega: requirements, .env.example, README | [x] pronto | core/tests_entrega.py |
 | 8 | Comandos exportar_dados e importar_planilhas | [x] pronto | core/tests_entrega.py |
 | 9 | Histórico de ligações: modelo, migração com carga, situacao_em, formulário | [x] pronto | associados/tests_historico.py |
 | 9 | Histórico de ligações: telas e item de menu | [x] pronto | associados/tests_historico.py (TelasHistoricoTests) |
@@ -20,6 +20,8 @@ Para rodar os testes: `DEBUG=True python manage.py test` (101 testes, todos pass
 | 9 | Migração do histórico: aplica e reverte com e sem dados | [x] pronto | associados/tests_historico.py (MigracaoTests) |
 | 10 | Exportação do relatório em CSV | [x] pronto | relatorios/tests_exportacao.py |
 | 10 | Exportação do relatório em PDF | [x] pronto | relatorios/tests_exportacao.py |
+| 11 | Importação da planilha oficial (importar_associados) | [x] pronto | associados/tests_importacao.py |
+| 11 | Deploy em VPS: Docker, Caddy, backup e restauração | [x] testado no Docker local em 11/11/2026 | manual, roteiro no README |
 
 ## Testes obrigatórios
 
@@ -35,11 +37,11 @@ Para rodar os testes: `DEBUG=True python manage.py test` (101 testes, todos pass
 
 ## Não verificado nesta máquina
 
-- **PostgreSQL:** não há PostgreSQL instalado. Os testes rodaram em SQLite. As restrições do banco
-  usam só recursos padrão do Django, mas a primeira rodada contra PostgreSQL deve ser feita no Render
-  ou com `DATABASE_URL` apontando para um PostgreSQL local.
-- **Gunicorn:** não roda no Windows. A configuração de produção foi conferida com `check --deploy`
-  e `collectstatic` com `DEBUG=False`.
+- **Testes automatizados no PostgreSQL:** a suíte roda em SQLite. O sistema já rodou contra
+  PostgreSQL 16 e gunicorn no Docker local (migrações, importação dos 65 associados, backup e
+  restauração), mas a suíte de testes ainda não foi executada contra o PostgreSQL.
+- **Servidor real:** o deploy foi testado só no Docker local, com o certificado próprio do Caddy.
+  O certificado da Let's Encrypt, o cron do backup e a cópia externa só se verificam no VPS.
 
 ## Escolhas onde nem as instruções nem o protótipo decidiam
 

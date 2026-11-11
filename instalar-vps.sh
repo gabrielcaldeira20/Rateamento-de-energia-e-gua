@@ -22,8 +22,24 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get upgrade -y
 
-echo "==> 2/6 Instalando pacotes de apoio"
+echo "==> 2/6 Pacotes de apoio, atualizacoes automaticas, fuso e memoria"
 apt-get install -y ca-certificates curl git ufw unattended-upgrades
+# Correcoes de seguranca do Ubuntu instaladas sozinhas, todo dia.
+cat > /etc/apt/apt.conf.d/20auto-upgrades <<'CONF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+CONF
+# Horario de Brasilia: o backup das 03:17 e os nomes dos arquivos seguem o fuso local.
+timedatectl set-timezone America/Sao_Paulo
+# VPS de 1 GB costuma ficar sem memoria no build da imagem. 2 GB de swap evitam isso.
+if [ -z "$(swapon --show)" ]; then
+    fallocate -l 2G /swapfile
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+    echo "/swapfile none swap sw 0 0" >> /etc/fstab
+    echo "    Swap de 2 GB criado."
+fi
 
 echo "==> 3/6 Instalando o Docker"
 if command -v docker >/dev/null 2>&1; then
@@ -70,11 +86,13 @@ else
 fi
 
 echo "==> 6/6 Pasta do projeto"
-mkdir -p "${PASTA}/backups"
+# Fica vazia de proposito: o git clone recusa uma pasta que ja tem conteudo.
+# A pasta backups/ e criada pelo instalar-backup.sh e pelo backup.sh.
+mkdir -p "$PASTA"
 chown -R "${USUARIO}:${USUARIO}" "$PASTA"
 
 echo
-echo "Pronto. Proximos passos:"
+echo "Pronto. Proximos passos (roteiro completo no README, secao Publicar no VPS):"
 echo "  1. Aponte o dominio para o IP deste servidor (registro A)."
 echo "  2. Entre como ${USUARIO}:  ssh ${USUARIO}@IP_DO_SERVIDOR"
 echo "  3. Clone o projeto em ${PASTA} e copie .env.example para .env."
