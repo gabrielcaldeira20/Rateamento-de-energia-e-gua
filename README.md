@@ -69,8 +69,9 @@ serve os arquivos estáticos. Um VPS Ubuntu 22.04 ou 24.04 com 1 ou 2 GB de mem�
    O administrador é criado na primeira subida com as variáveis `DJANGO_SUPERUSER_*`.
    Acesse `https://SEU_DOMINIO` e entre com ele.
 
-5. **Backup diário:** `bash instalar-backup.sh` agenda o backup para 03:17. Rode `bash backup.sh` uma vez
-   na hora para conferir. Falta configurar a cópia externa, veja a seção **Backup**.
+5. **Backup diário e cópia externa:** configure o Backblaze B2 e o aviso de falha (`BACKUP-EXTERNO-B2.md`), depois rode
+   `bash instalar-backup.sh`, que agenda o backup para 03:17, e `bash backup.sh` uma vez na hora para
+   conferir. Não coloque os dados reais antes de a cópia externa estar confirmada.
 
 6. **Importar os associados.** A planilha tem dados pessoais: ela vai direto por `scp`, é importada e é
    apagada do servidor. Rode sempre primeiro com `--simular`:
@@ -162,24 +163,20 @@ Os números vêm das mesmas funções da tela. O CSV usa UTF-8 com BOM, ponto e 
 
 ## Backup
 
-- **`backup.sh`** gera `backups/alfa-AAAA-MM-DD_HHMM.sql.gz` com o `pg_dump` do banco, recusa arquivos
-  suspeitos de vazios e apaga os de mais de 30 dias. O `instalar-backup.sh` o agenda para todo dia às 03:17,
-  com registro em `backups/backup.log`.
-- **`restaurar.sh ARQUIVO`** pede a confirmação `RESTAURAR`, guarda antes um dump do estado atual,
-  recria o banco e restaura. Ele para no primeiro erro e, nesse caso, deixa a aplicação parada e mostra
-  o comando para voltar ao estado anterior.
-- **Cópia externa: ainda não configurada.** Hoje os backups ficam só no próprio VPS. Se o servidor for
-  perdido, eles vão junto. As opções estão comentadas no fim do `backup.sh`.
+- **`backup.sh`** gera `backups/alfa-AAAA-MM-DD_HHMMSS.sql.gz` com o `pg_dump` do banco. O dump só ganha
+  esse nome depois de conferido (tamanho mínimo e a marca de fim que o `pg_dump` escreve); se algo falhar,
+  nenhum arquivo com nome de backup fica para trás. Com `RCLONE_REMOTO` no `.env`, envia uma cópia para fora
+  do servidor e **confere o tamanho do arquivo que chegou**. Com `HEALTHCHECK_URL`, avisa o healthchecks.io
+  no sucesso e em qualquer falha. Retenção no servidor: 30 dias, e 90 para os `antes-da-restauracao-*`.
+  A retenção remota fica na regra de ciclo de vida do bucket, não no script. O `instalar-backup.sh` o agenda
+  para todo dia às 03:17, com registro em `backups/backup.log`.
+- **`restaurar.sh ARQUIVO`** recusa, sem apagar nada, um arquivo que não seja um dump completo. Depois pede
+  a confirmação `RESTAURAR`, guarda um dump do estado atual, recria o banco e restaura. Ele para no primeiro
+  erro e, nesse caso, deixa a aplicação parada e mostra o comando para voltar ao estado anterior.
+- **Cópia externa no Backblaze B2, aviso de falha e ensaio de restauração:** roteiro completo em
+  [`BACKUP-EXTERNO-B2.md`](BACKUP-EXTERNO-B2.md). Os dados reais só entram depois do ensaio a partir do B2.
 
-Ensaio de restauração, para fazer no servidor antes de precisar:
-
-```bash
-bash backup.sh
-bash restaurar.sh backups/alfa-AAAA-MM-DD_HHMM.sql.gz   # o arquivo que acabou de ser gerado
-```
-
-Depois, abra o sistema e confira os associados. Na sua máquina, os dois scripts rodam com
-`PASTA="$PWD" bash backup.sh` e `PASTA="$PWD" bash restaurar.sh ARQUIVO`.
+Na sua máquina, os scripts rodam com `PASTA="$PWD" bash backup.sh` e `PASTA="$PWD" bash restaurar.sh ARQUIVO`.
 
 ## Organização do código
 

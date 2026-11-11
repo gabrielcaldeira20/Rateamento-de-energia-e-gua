@@ -65,6 +65,16 @@ fi
 # Caminho absoluto: o script muda de pasta logo abaixo.
 ARQUIVO="$(realpath "$ARQUIVO")"
 
+# Recusa, antes de apagar qualquer coisa, um arquivo que nao e um dump completo.
+# Um .gz vazio ou cortado restauraria "com sucesso" um banco vazio ou pela metade.
+FINAL_DO_DUMP="$(gunzip -c "$ARQUIVO" 2>/dev/null | tail -n 5 || true)"
+if ! printf '%s\n' "$FINAL_DO_DUMP" | grep -q "PostgreSQL database dump complete"; then
+    trap - ERR
+    echo "ERRO: ${ARQUIVO} nao e um dump completo (falta a marca de fim do pg_dump)." >&2
+    echo "Nada foi alterado. Escolha outro backup." >&2
+    exit 1
+fi
+
 cd "$PASTA"
 POSTGRES_USER="$(grep -E '^POSTGRES_USER=' .env | cut -d= -f2-)"
 POSTGRES_DB="$(grep -E '^POSTGRES_DB=' .env | cut -d= -f2-)"
