@@ -1,0 +1,46 @@
+name: Testes
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: asv
+          POSTGRES_USER: asv
+          POSTGRES_PASSWORD: asv-testes
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U asv -d asv"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DEBUG: "True"
+      DATABASE_URL: postgresql://asv:asv-testes@localhost:5432/asv
+      DATABASE_SSL_REQUIRE: "False"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Migrações pendentes
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Testes
+        run: python manage.py test
