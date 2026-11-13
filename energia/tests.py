@@ -133,6 +133,35 @@ class FechamentoTests(TestCase):
         self.assertEqual(services.leitura_anterior(self.a, "SEDE"), 1100)
         self.assertEqual(services.leitura_anterior(self.b, "POCO"), 500)
 
+    def test_leituras_anteriores_em_lote_igual_a_consulta_individual(self):
+        associados = [self.a, self.b, self.assoc]
+
+        def conferir():
+            for rede in ("SEDE", "POCO"):
+                esperado = {a.pk: services.leitura_anterior(a, rede) for a in associados}
+                with self.assertNumQueries(1):
+                    self.assertEqual(services.leituras_anteriores(associados, rede), esperado)
+
+        conferir()          # sem fechamento: leitura inicial do cadastro
+        self.fechar_sede()
+        conferir()          # depois do fechamento: última leitura gravada
+
+    def test_rateio_nao_faz_uma_consulta_por_associado(self):
+        """O número de consultas do rateio não cresce com a quantidade de associados."""
+        def consultas():
+            from django.db import connection
+            from django.test.utils import CaptureQueriesContext
+            with CaptureQueriesContext(connection) as ctx:
+                services.calcular_rateio("SEDE", JUN, Decimal("210.00"), 250, {})
+            return len(ctx.captured_queries)
+
+        from core.models import Configuracao
+        Configuracao.atual()  # a primeira chamada cria a configuração; fica fora da contagem
+        antes = consultas()
+        for i in range(10):
+            fabrica.associado(f"Extra {i}")
+        self.assertEqual(consultas(), antes)
+
     def test_fechamento_e_atomico(self):
         original = Cobranca.objects.create
 
@@ -182,3 +211,14 @@ class TelasTests(TestCase):
         })
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Já existe fechamento")
+
+
+class LerInteiroTests(TestCase):
+    def test_entradas_validas_e_invalidas(self):
+        from energia.views import ler_inteiro
+        casos = {
+            "1520": 1520, " 1520 ": 1520, "1520,0": 1520, "0": 0,
+            "": None, None: None, "-3": None, "abc": None, "NaN": None, "Infinity": None,
+        }
+        for texto, esperado in casos.items():
+            self.assertEqual(ler_inteiro(texto), esperado, texto)

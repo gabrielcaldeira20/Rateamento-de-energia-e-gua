@@ -5,7 +5,11 @@ from django.db import models
 
 
 class Associado(models.Model):
-    """Cadastro do associado. Guarda só o estado atual, sem histórico por data."""
+    """Cadastro do associado.
+
+    rede_sede, rede_poco e agua_ligada refletem o registro mais recente de HistoricoLigacao,
+    que é a fonte da verdade por data (ver associados.services.recalcular_estado).
+    """
 
     nome = models.CharField(max_length=150)
     cpf_cnpj = models.CharField(

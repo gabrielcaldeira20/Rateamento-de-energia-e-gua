@@ -1,7 +1,7 @@
 # Status da construção
 
 Só fica marcado como pronto o que tem teste automatizado passando.
-Para rodar os testes: `DEBUG=True python manage.py test` (126 testes, todos passando).
+Para rodar os testes: `DEBUG=True python manage.py test` (134 testes, todos passando).
 
 | Fase | Item | Status | Testes |
 |---|---|---|---|
@@ -84,3 +84,13 @@ Para rodar os testes: `DEBUG=True python manage.py test` (126 testes, todos pass
 26. O CSV traz cabeçalho (associação, regime, período, data de geração), resumo e as duas tabelas, com uma linha de total em cada.
     As tabelas da exportação vêm em ordem de data crescente. Na tela, a ordem é decrescente.
 27. O PDF não tem gráfico, que era opcional. Ele sai sem compressão de página, o que deixa o arquivo um pouco maior.
+28. No PDF, nomes e descrições são texto puro: `<`, `>` e `&` aparecem como digitados e não quebram a geração.
+
+### Revisão técnica de 13/11/2026
+
+29. No admin, `valor_pago` e `status` da cobrança são somente leitura, e não se incluem pagamentos pela cobrança.
+    Os movimentos de crédito são só para consulta. Tudo isso é consequência de `registrar_pagamento` e
+    `baixar_em_lote`; alterar à mão deixaria cobrança, pagamento e crédito discordando.
+30. O rateio, o passo 2 do lançamento e a geração mensal consultam histórico e leituras de todos os associados
+    de uma vez (`situacoes_na_competencia`, `leituras_anteriores`). O número de consultas não cresce com a
+    quantidade de associados. `situacao_em` e `leitura_anterior` continuam para consultas de um associado só.

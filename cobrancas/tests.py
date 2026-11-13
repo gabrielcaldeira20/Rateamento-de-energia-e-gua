@@ -223,3 +223,37 @@ class WhatsAppTests(TestCase):
         services.registrar_pagamento(c.pk, Decimal("40.00"), DIA)
         c.refresh_from_db()
         self.assertIsNone(services.link_whatsapp(c))
+
+
+class AdminTests(TestCase):
+    """O admin não pode alterar o que é consequência dos pagamentos."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        self.admin = get_user_model().objects.create_superuser("admin", password="x")
+        self.client.force_login(self.admin)
+        self.c = cobranca(fabrica.associado("Ana"))
+        services.registrar_pagamento(self.c.pk, Decimal("150.00"), DIA)  # gera crédito de 50
+
+    def test_valor_pago_e_status_somente_leitura(self):
+        resp = self.client.get(reverse("admin:cobrancas_cobranca_change", args=[self.c.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn('name="valor_pago"', resp.content.decode())
+        self.assertNotIn('name="status"', resp.content.decode())
+
+    def test_nao_inclui_pagamento_pelo_admin(self):
+        from django.contrib import admin
+        from django.test import RequestFactory
+        request = RequestFactory().get("/")
+        request.user = self.admin
+        inline = admin.site.get_model_admin(Cobranca).get_inline_instances(request, self.c)[0]
+        self.assertFalse(inline.has_add_permission(request, self.c))
+
+    def test_credito_somente_consulta(self):
+        credito = MovimentoCredito.objects.get()
+        url = reverse("admin:cobrancas_movimentocredito_change", args=[credito.pk])
+        self.assertEqual(self.client.get(url).status_code, 200)  # consulta continua
+        self.client.post(url, {"valor": "999.00"})
+        credito.refresh_from_db()
+        self.assertEqual(credito.valor, Decimal("50.00"))
+        self.assertEqual(self.client.get(reverse("admin:cobrancas_movimentocredito_add")).status_code, 403)

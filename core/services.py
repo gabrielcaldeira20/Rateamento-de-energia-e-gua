@@ -2,19 +2,13 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-from django.db.models import F, Sum
+from django.db.models import F
 
 from associados.models import Associado
 from cobrancas.models import Cobranca, Pagamento, StatusCobranca
 from despesas.models import Despesa
 
-from .utils import hoje, mes_atual
-
-ZERO = Decimal("0.00")
-
-
-def _soma(qs, expressao):
-    return qs.aggregate(s=Sum(expressao))["s"] or ZERO
+from .utils import hoje, mes_atual, somar
 
 
 @dataclass
@@ -40,19 +34,19 @@ def numeros_painel(competencia=None, data_base=None):
     competencia = competencia or mes_atual()
     data_base = data_base or hoje()
     abertas_mes = Cobranca.objects.filter(competencia=competencia).exclude(status=StatusCobranca.PAGA)
-    entradas = _soma(Pagamento.objects.filter(cobranca__competencia=competencia), "valor")
-    despesas = _soma(Despesa.objects.filter(competencia=competencia), "valor")
+    entradas = somar(Pagamento.objects.filter(cobranca__competencia=competencia), "valor")
+    despesas = somar(Despesa.objects.filter(competencia=competencia), "valor")
     atrasadas = Cobranca.objects.filter(vencimento__isnull=False, vencimento__lt=data_base).exclude(
         status=StatusCobranca.PAGA
     )
     return NumerosPainel(
         competencia=competencia,
-        a_receber=_soma(abertas_mes, F("valor") - F("valor_pago")),
+        a_receber=somar(abertas_mes, F("valor") - F("valor_pago")),
         entradas=entradas,
         despesas=despesas,
         saldo=entradas - despesas,
         associados_ativos=Associado.objects.filter(ativo=True).count(),
         cobrancas_pendentes=abertas_mes.count(),
-        em_atraso=_soma(atrasadas, F("valor") - F("valor_pago")),
+        em_atraso=somar(atrasadas, F("valor") - F("valor_pago")),
         qtd_em_atraso=atrasadas.count(),
     )

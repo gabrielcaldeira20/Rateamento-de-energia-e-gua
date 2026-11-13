@@ -3,10 +3,17 @@ import calendar
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
+from django.db.models import Sum
 from django.utils import timezone
 
+ZERO = Decimal("0.00")
 CENTAVO = Decimal("0.01")
 MESES_ABREV = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+
+
+def somar(qs, expressao):
+    """Soma de um campo (ou expressão) no banco. Sem registros, ZERO em vez de None."""
+    return qs.aggregate(s=Sum(expressao))["s"] or ZERO
 
 
 def arredondar(valor, casas=CENTAVO):

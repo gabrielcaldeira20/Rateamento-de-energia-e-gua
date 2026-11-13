@@ -4,7 +4,7 @@ from django.db.models import Q
 
 from core.utils import ultimo_dia
 
-from .models import CAMPO_DO_TIPO, Associado, HistoricoLigacao
+from .models import CAMPO_DO_TIPO, Associado, HistoricoLigacao, TipoLigacao
 
 
 def filtrar(busca="", rede="todas", agua="todos", status="ativos"):
@@ -44,11 +44,13 @@ def elegiveis_energia(rede, competencia=None):
 
     campo_rede = CAMPO_DO_TIPO[rede]
     campo_padrao = "padrao_ligado_sede" if rede == "SEDE" else "padrao_ligado_poco"
-    candidatos = Associado.objects.filter(ativo=True, historico_ligacoes__tipo=rede).distinct().order_by("nome", "pk")
+    candidatos = list(
+        Associado.objects.filter(ativo=True, historico_ligacoes__tipo=rede).distinct().order_by("nome", "pk")
+    )
+    ligados = situacoes_na_competencia(candidatos, rede, competencia)
     return [
         a for a in candidatos
-        if situacao_na_competencia(a, rede, competencia)
-        and (getattr(a, campo_padrao) or not getattr(a, campo_rede))
+        if ligados[a.pk] and (getattr(a, campo_padrao) or not getattr(a, campo_rede))
     ]
 
 
@@ -70,6 +72,25 @@ def situacao_em(associado, tipo, data):
 def situacao_na_competencia(associado, tipo, competencia):
     """Para uma competência, vale o estado no último dia do mês."""
     return situacao_em(associado, tipo, ultimo_dia(competencia))
+
+
+def situacoes_na_competencia(associados, tipo, competencia):
+    """situacao_na_competencia de vários associados com uma consulta só: {pk: ligado}.
+
+    Mesma regra: o último registro até o fim do mês vale; sem registro, desligado.
+    """
+    ids = [a.pk for a in associados]
+    situacao = dict.fromkeys(ids, False)
+    registros = (
+        HistoricoLigacao.objects.filter(associado_id__in=ids, tipo=tipo, data__lte=ultimo_dia(competencia))
+        .order_by("associado_id", "-data").values_list("associado_id", "ligado")
+    )
+    vistos = set()
+    for associado_id, ligado in registros:
+        if associado_id not in vistos:  # o primeiro de cada associado é o mais recente
+            vistos.add(associado_id)
+            situacao[associado_id] = ligado
+    return situacao
 
 
 def recalcular_estado(associado):
@@ -127,6 +148,20 @@ def excluir_registro(registro):
     associado = registro.associado
     registro.delete()
     recalcular_estado(associado)
+
+
+def filtrar_historico(associado="", tipo="todos", de=None, ate=None):
+    """Filtros da lista geral do histórico. Valores inválidos são ignorados."""
+    qs = HistoricoLigacao.objects.select_related("associado").order_by("-data", "associado__nome", "tipo")
+    if str(associado).isdigit():
+        qs = qs.filter(associado_id=int(associado))
+    if tipo in TipoLigacao.values:
+        qs = qs.filter(tipo=tipo)
+    if de:
+        qs = qs.filter(data__gte=de)
+    if ate:
+        qs = qs.filter(data__lte=ate)
+    return qs
 
 
 def definir_ativo(associado, ativo):

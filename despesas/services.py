@@ -1,6 +1,4 @@
-from decimal import Decimal
-
-from django.db.models import Sum
+from core.utils import somar
 
 from .models import Despesa
 
@@ -15,4 +13,4 @@ def filtrar(competencia=None, categoria="todas"):
 
 
 def total(qs):
-    return qs.aggregate(s=Sum("valor"))["s"] or Decimal("0.00")
+    return somar(qs, "valor")
