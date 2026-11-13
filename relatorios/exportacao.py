@@ -6,6 +6,7 @@ Os números vêm das mesmas funções de services.py que a tela usa
 import csv
 import io
 from dataclasses import dataclass
+from xml.sax.saxutils import escape
 
 from django.utils import timezone
 
@@ -128,8 +129,13 @@ def gerar_pdf(d):
     pequeno = estilos["BodyText"].clone("pequeno", fontSize=8, leading=10)
     verde = colors.HexColor("#4a5d3a")
 
+    # Paragraph interpreta marcação (<b>, &amp;...). Texto vindo do banco precisa ser escapado,
+    # senão um nome como "Cabo <b>2mm" quebra a geração do PDF.
+    def texto(conteudo, estilo):
+        return Paragraph(escape(str(conteudo)), estilo)
+
     def tabela(cabecalho, linhas, larguras, total=None):
-        dados = [cabecalho] + [[Paragraph(str(c), pequeno) for c in linha[:-1]] + [valor(linha[-1])] for linha in linhas]
+        dados = [cabecalho] + [[texto(c, pequeno) for c in linha[:-1]] + [valor(linha[-1])] for linha in linhas]
         if not linhas:
             dados.append(["Nenhum registro no período."] + [""] * (len(cabecalho) - 1))
         if total is not None:
@@ -151,9 +157,9 @@ def gerar_pdf(d):
     largura = A4[0] - doc.leftMargin - doc.rightMargin
     historia = [
         Paragraph("Relatório Financeiro", estilos["Title"]),
-        Paragraph(d.associacao, estilos["Heading3"]),
+        texto(d.associacao, estilos["Heading3"]),
         Paragraph(
-            f"Regime: {d.rotulo_regime}<br/>Período: {d.periodo}<br/>"
+            f"Regime: {escape(d.rotulo_regime)}<br/>Período: {escape(d.periodo)}<br/>"
             f"Gerado em: {d.gerado_em.strftime('%d/%m/%Y %H:%M')}",
             estilos["BodyText"],
         ),

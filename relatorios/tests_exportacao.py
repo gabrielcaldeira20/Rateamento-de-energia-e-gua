@@ -115,3 +115,16 @@ class ExportacaoTests(TestCase):
             resp = self.exportar(formato, "pagamento", "2026-06", "2026-06")
             self.assertEqual(resp.status_code, 302)
             self.assertTrue(resp.url.startswith(reverse("login")))
+
+    def test_pdf_com_texto_que_parece_marcacao(self):
+        """Nomes e descrições são texto puro: <, > e & não podem quebrar o PDF."""
+        Despesa.objects.create(descricao="Cabo <b>2mm & conector", categoria="OUTRA", categoria_outra="Peças <x>",
+                               valor=Decimal("5.00"), data=date(2026, 6, 21), competencia=JUN)
+        self.ana.nome = "Ana <Souza> & Filhos"
+        self.ana.save()
+        resp = self.exportar("pdf", "pagamento", "2026-05", "2026-07")
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.content.startswith(b"%PDF"))
+        # O texto aparece literal (o ReportLab grava em pedaços entre os sinais < e >).
+        self.assertIn(b"(Cabo <) Tj (b) Tj (>) Tj (2mm & conector)", resp.content)
+        self.assertIn(b"(Ana <) Tj (Souza) Tj (> & Filhos)", resp.content)

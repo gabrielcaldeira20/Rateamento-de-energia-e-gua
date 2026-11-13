@@ -10,13 +10,11 @@ from django.db import transaction
 from django.db.models import F, Sum
 
 from associados.models import Associado
-from associados.services import situacao_na_competencia
+from associados.services import situacoes_na_competencia
 from core.models import Configuracao
-from core.utils import formatar_brl, hoje, mes_label
+from core.utils import ZERO, formatar_brl, hoje, mes_label
 
 from .models import Cobranca, MovimentoCredito, Pagamento, RedeCobranca, StatusCobranca, TipoCobranca
-
-ZERO = Decimal("0.00")
 
 
 class PagamentoInvalido(Exception):
@@ -42,11 +40,13 @@ def gerar_mensais(competencia, config=None):
     config = config or Configuracao.atual()
     criadas = existentes = 0
     total = ZERO
-    for associado in Associado.objects.filter(ativo=True):
+    associados = list(Associado.objects.filter(ativo=True))
+    agua_ligada = situacoes_na_competencia(associados, "AGUA", competencia)
+    for associado in associados:
         itens = []
         if associado.valor_mensalidade > 0:
             itens.append((TipoCobranca.MENSALIDADE, associado.valor_mensalidade))
-        if config.valor_agua > 0 and situacao_na_competencia(associado, "AGUA", competencia):
+        if config.valor_agua > 0 and agua_ligada[associado.pk]:
             itens.append((TipoCobranca.AGUA, config.valor_agua))
         for tipo, valor in itens:
             _, criada = Cobranca.objects.get_or_create(

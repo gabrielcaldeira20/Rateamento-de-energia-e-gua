@@ -10,13 +10,10 @@ from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
 
-from django.db.models import Sum
-
 from cobrancas.models import Cobranca, Pagamento, TipoCobranca
-from core.utils import mes_atual, mes_label, meses_entre, primeiro_dia, somar_meses, ultimo_dia
+from core.utils import ZERO, mes_atual, mes_label, meses_entre, primeiro_dia, somar, somar_meses, ultimo_dia
 from despesas.models import Despesa
 
-ZERO = Decimal("0.00")
 MODOS = [("pagamento", "Por data de pagamento"), ("competencia", "Por mês de competência")]
 PERIODOS = [("atual", "Mês atual"), ("3m", "Últimos 3 meses"), ("6m", "Últimos 6 meses"), ("custom", "Personalizado")]
 
@@ -53,10 +50,6 @@ def disponibilidade_do_periodo(inicio, fim):
     )
 
 
-def _soma(qs, campo):
-    return qs.aggregate(s=Sum(campo))["s"] or ZERO
-
-
 @dataclass
 class Resumo:
     entradas: Decimal
@@ -66,9 +59,9 @@ class Resumo:
 
 
 def resumo_periodo(inicio, fim, modo="pagamento"):
-    entradas = _soma(pagamentos_do_periodo(inicio, fim, modo), "valor")
-    despesas = _soma(despesas_do_periodo(inicio, fim, modo), "valor")
-    disponibilidade = _soma(disponibilidade_do_periodo(inicio, fim), "valor_disponibilidade")
+    entradas = somar(pagamentos_do_periodo(inicio, fim, modo), "valor")
+    despesas = somar(despesas_do_periodo(inicio, fim, modo), "valor")
+    disponibilidade = somar(disponibilidade_do_periodo(inicio, fim), "valor_disponibilidade")
     return Resumo(entradas, despesas, entradas - despesas, disponibilidade)
 
 

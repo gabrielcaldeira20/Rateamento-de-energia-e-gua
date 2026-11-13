@@ -6,6 +6,7 @@ from django.views import View
 from core.utils import mes_iso, parse_mes
 
 from . import services
+from .exportacao import gerar_csv, gerar_pdf, montar
 
 
 class FinanceiroView(LoginRequiredMixin, View):
@@ -44,8 +45,6 @@ class ExportarView(LoginRequiredMixin, View):
     """
 
     def get(self, request):
-        from .exportacao import gerar_csv, gerar_pdf, montar
-
         formato = request.GET.get("formato", "")
         if formato not in ("pdf", "csv"):
             return HttpResponseBadRequest("Formato inválido. Use pdf ou csv.")

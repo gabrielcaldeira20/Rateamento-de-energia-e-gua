@@ -1,9 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date as _parse_date
 from django.views import View
 
-from django.utils.dateparse import parse_date as _parse_date
+from cobrancas.services import resumo_associado, saldos_devedores
 
 from . import services
 from .forms import AssociadoForm, HistoricoForm
@@ -11,8 +12,9 @@ from .models import Associado, HistoricoLigacao, TipoLigacao
 
 
 def parse_date(texto):
+    """Data AAAA-MM-DD ou None, sem erro para texto vazio ou data impossível."""
     try:
-        return _parse_date(texto)
+        return _parse_date(texto or "")
     except ValueError:
         return None
 
@@ -35,10 +37,6 @@ class ListaView(LoginRequiredMixin, View):
 
     def linhas(self, lista):
         """Cada linha da tabela com o saldo devedor calculado pelo app de cobranças."""
-        try:
-            from cobrancas.services import saldos_devedores
-        except ImportError:
-            return [{"a": a, "saldo": None} for a in lista]
         saldos = saldos_devedores([a.pk for a in lista])
         return [{"a": a, "saldo": saldos.get(a.pk)} for a in lista]
 
@@ -69,13 +67,7 @@ class FormularioView(LoginRequiredMixin, View):
 class DetalheView(LoginRequiredMixin, View):
     def get(self, request, pk):
         associado = get_object_or_404(Associado, pk=pk)
-        contexto = {"a": associado}
-        try:
-            from cobrancas.services import resumo_associado
-        except ImportError:
-            resumo_associado = None
-        if resumo_associado:
-            contexto.update(resumo_associado(associado))
+        contexto = {"a": associado, **resumo_associado(associado)}
         return render(request, "associados/detalhe.html", contexto)
 
 
@@ -173,18 +165,11 @@ class HistoricoListaView(LoginRequiredMixin, View):
             "de": request.GET.get("de", ""),
             "ate": request.GET.get("ate", ""),
         }
-        qs = HistoricoLigacao.objects.select_related("associado").order_by("-data", "associado__nome", "tipo")
-        if filtros["associado"].isdigit():
-            qs = qs.filter(associado_id=int(filtros["associado"]))
-        if filtros["tipo"] in TipoLigacao.values:
-            qs = qs.filter(tipo=filtros["tipo"])
-        de, ate = parse_date(filtros["de"] or ""), parse_date(filtros["ate"] or "")
-        if de:
-            qs = qs.filter(data__gte=de)
-        if ate:
-            qs = qs.filter(data__lte=ate)
+        registros = services.filtrar_historico(
+            filtros["associado"], filtros["tipo"], parse_date(filtros["de"]), parse_date(filtros["ate"]),
+        )
         contexto = {
-            "registros": qs,
+            "registros": registros,
             "filtros": filtros,
             "associados": Associado.objects.order_by("nome"),
             "tipos": TipoLigacao.choices,

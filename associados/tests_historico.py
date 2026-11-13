@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from associados import services
 from associados.forms import AssociadoForm
-from associados.models import Associado, HistoricoLigacao
+from associados.models import HistoricoLigacao
 from cobrancas import services as cobrancas
 from cobrancas.models import Cobranca
 from core import fabrica
@@ -47,6 +47,16 @@ class SituacaoEmTests(TestCase):
         self.assertFalse(services.situacao_na_competencia(self.a, "SEDE", JUN))
         self.assertFalse(services.situacao_na_competencia(self.a, "SEDE", JUL))
         self.assertTrue(services.situacao_na_competencia(self.a, "SEDE", date(2026, 8, 1)))
+
+    def test_situacoes_em_lote_igual_a_consulta_individual(self):
+        sem_registro = fabrica.associado("Bia", ligado_desde=None)
+        associados = [self.a, sem_registro]
+        for competencia in (date(2026, 2, 1), date(2026, 3, 1), JUN, JUL, date(2026, 8, 1), date(2031, 1, 1)):
+            for tipo in ("SEDE", "POCO", "AGUA"):
+                esperado = {a.pk: services.situacao_na_competencia(a, tipo, competencia) for a in associados}
+                with self.assertNumQueries(1):
+                    obtido = services.situacoes_na_competencia(associados, tipo, competencia)
+                self.assertEqual(obtido, esperado, (competencia, tipo))
 
 
 class EstadoAtualTests(TestCase):

@@ -1,10 +1,10 @@
 """Lançamento de energia em 3 passos. Os dados entre os passos ficam na sessão."""
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
 from associados.services import elegiveis_energia
@@ -44,12 +44,13 @@ def gravar_sessao(request, conta, leituras=None):
 
 
 def ler_inteiro(texto):
+    """Leitura digitada: inteiro não negativo, ou None se vazia ou inválida."""
     texto = (texto or "").strip()
     if not texto:
         return None
     try:
         valor = int(Decimal(texto.replace(",", ".")))
-    except Exception:
+    except (InvalidOperation, ValueError, OverflowError):  # texto, NaN e Infinity
         return None
     return valor if valor >= 0 else None
 
@@ -90,13 +91,12 @@ class Passo2View(LoginRequiredMixin, View):
         conta = ler_sessao(request)
         if not conta:
             return redirect("energia:passo1")
-        linhas = []
-        for associado in elegiveis_energia(conta["rede"], conta["competencia"]):
-            linhas.append({
-                "associado": associado,
-                "anterior": services.leitura_anterior(associado, conta["rede"]),
-                "atual": conta["leituras"].get(associado.pk),
-            })
+        associados = list(elegiveis_energia(conta["rede"], conta["competencia"]))
+        anteriores = services.leituras_anteriores(associados, conta["rede"])
+        linhas = [
+            {"associado": a, "anterior": anteriores[a.pk], "atual": conta["leituras"].get(a.pk)}
+            for a in associados
+        ]
         contexto = {
             "passo": 2, "conta": conta, "rede_label": Rede(conta["rede"]).label, "linhas": linhas,
             "fator": services.calcular_fator(conta["valor_total"], conta["kwh_total"]),
@@ -157,7 +157,7 @@ class ConcluidoView(LoginRequiredMixin, View):
         resultado = request.session.pop("energia_resultado", None)
         if not resultado:
             return redirect("energia:passo1")
-        resultado["fechamento"] = FechamentoEnergia.objects.get(pk=resultado["fechamento"])
+        resultado["fechamento"] = get_object_or_404(FechamentoEnergia, pk=resultado["fechamento"])
         resultado["total"] = Decimal(resultado["total"])
         resultado["total_multas"] = Decimal(resultado["total_multas"])
         return render(request, "energia/concluido.html", {"passo": 4, "r": resultado})

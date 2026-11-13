@@ -12,12 +12,11 @@ from django.db import IntegrityError, transaction
 from associados.services import elegiveis_energia
 from cobrancas.models import Cobranca, RedeCobranca, TipoCobranca
 from core.models import Configuracao
-from core.utils import arredondar, mes_label, somar_meses
+from core.utils import ZERO, arredondar, mes_label, somar_meses
 
 from .models import FechamentoEnergia, Leitura, Rede
 
 SEIS_CASAS = Decimal("0.000001")
-ZERO = Decimal("0.00")
 
 
 class FechamentoInvalido(Exception):
@@ -115,6 +114,19 @@ def leitura_anterior(associado, rede):
     return associado.leitura_inicial(rede) or 0
 
 
+def leituras_anteriores(associados, rede):
+    """leitura_anterior de vários associados com uma consulta só: {pk: leitura}."""
+    ultimas = {}
+    registros = (
+        Leitura.objects.filter(associado__in=associados, fechamento__rede=rede)
+        .order_by("associado_id", "-fechamento__competencia")
+        .values_list("associado_id", "leitura_atual")
+    )
+    for associado_id, leitura in registros:
+        ultimas.setdefault(associado_id, leitura)  # o primeiro de cada associado é o mais recente
+    return {a.pk: ultimas.get(a.pk, a.leitura_inicial(rede) or 0) for a in associados}
+
+
 def calcular_multa(consumo, valor_energia, config):
     """Consumo estritamente acima do limite gera multa sobre o valor da energia (sem a taxa)."""
     if consumo > config.limite_kwh_multa:
@@ -133,8 +145,10 @@ def calcular_rateio(rede, competencia, valor_total, kwh_total, leituras, config=
     fator = calcular_fator(valor_total, kwh_total)
     rateio = Rateio(rede, competencia, valor_total, int(kwh_total), fator)
 
-    for associado in elegiveis_energia(rede, competencia):
-        anterior = leitura_anterior(associado, rede)
+    associados = list(elegiveis_energia(rede, competencia))
+    anteriores = leituras_anteriores(associados, rede)
+    for associado in associados:
+        anterior = anteriores[associado.pk]
         atual = leituras.get(associado.pk)
         linha = LinhaRateio(associado, anterior, atual)
         if atual is None:
@@ -169,11 +183,6 @@ def calcular_rateio(rede, competencia, valor_total, kwh_total, leituras, config=
             f"A soma dos consumos ({rateio.soma_consumo} kWh) passa dos kWh da conta ({rateio.kwh_total} kWh)."
         )
     return rateio
-
-
-def validar_fechamento(rateio):
-    """Retorna (erros, avisos) do rateio."""
-    return rateio.erros, rateio.avisos
 
 
 @dataclass

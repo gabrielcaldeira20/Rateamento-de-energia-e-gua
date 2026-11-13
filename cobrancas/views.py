@@ -30,6 +30,7 @@ class ListaView(LoginRequiredMixin, View):
         lista = list(services.filtrar(filtros["busca"], filtros["tipo"], competencia, filtros["status"]))
         abertas = [c for c in lista if c.em_aberto]
         meses = Cobranca.objects.dates("competencia", "month", order="DESC")
+        config = Configuracao.atual()
         contexto = {
             "lista": lista,
             "filtros": filtros,
@@ -40,14 +41,10 @@ class ListaView(LoginRequiredMixin, View):
             "status_opcoes": StatusCobranca.choices,
             "meses": [(mes_iso(m), mes_label(m)) for m in meses],
             "mes_atual": mes_iso(mes_atual()),
-            "links_whatsapp": self.links_whatsapp(abertas),
-            "sem_chave_pix": not Configuracao.atual().chave_pix,
+            "links_whatsapp": {c.pk: services.link_whatsapp(c, config) for c in abertas},
+            "sem_chave_pix": not config.chave_pix,
         }
         return render(request, "cobrancas/lista.html", contexto)
-
-    def links_whatsapp(self, abertas):
-        config = Configuracao.atual()
-        return {c.pk: services.link_whatsapp(c, config) for c in abertas}
 
 
 class PagarView(LoginRequiredMixin, View):
